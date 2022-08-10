@@ -1,0 +1,28 @@
+
+
+const cors = require("cors");
+const express = require("express");
+const app = express();
+app.use(cors());
+app.use(express.json());
+// app.use(express.urlencoded({ extended: true }));
+var bodyParser = require('body-parser');
+// parse requests of content-type - application/x-www-form-urlencoded
+app.use(bodyParser.urlencoded({ extended: true }));
+// parse requests of content-type - application/json
+//app.use(bodyParser.json());
+
+const initRoutes = require("./app/routes");
+initRoutes(app);
+
+
+
+app.get("/", (req, res) => {
+  res.json({ message: "GoogleCloud - Welcome to the back-end application server.js [express node.js]." });
+});
+
+const port = 8080;
+app.listen(port, () => {
+  console.log(`Running at localhost:${port}`);
+});
+
