@@ -9,17 +9,6 @@ findAllPublished
 */
 
 
-
-/****
-const mongoose = require("mongoose");
-mongoose.Promise = global.Promise;
-const dbConfig = require("../config/db.config.js");
-const db = require("../models/tutorial.model");
-db.url = dbConfig.url;
-db.tutorials = require("../models/tutorial.model.js")(mongoose);
-const Tutorial = db.tutorials;
-****/
-
 // Access to MONGO-DB 
 
 
@@ -27,6 +16,7 @@ const Tutorial = db.tutorials;
 const { ServerApiVersion } = require('mongodb');
 //const credentials ="/Users/xaviervanstaen/X509-cert-6982656651602215038.pem";
 const credentials ="/etc/ssl/X509-cert-MongoDB.pem";
+
 
 var optionsB = {
     sslKey: credentials,

@@ -12,13 +12,16 @@ app.use(bodyParser.urlencoded({ extended: true }));
 // parse requests of content-type - application/json
 //app.use(bodyParser.json());
 
+//Google Cloud: avec Express.js, utilisez le paramètre trust proxy 
+app.set('trust proxy', true);
+
 const initRoutes = require("./app/routes");
 initRoutes(app);
 
 
 
 app.get("/", (req, res) => {
-  res.json({ message: "GoogleCloud - Welcome to the back-end application server.js [express node.js]." });
+  res.json({ message: "GoogleCloud & MongoDB - Welcome to the back-end application server.js [express node.js]." });
 });
 const port = process.env.PORT || 8080;
 app.listen(port, () => {
