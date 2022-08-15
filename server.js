@@ -20,8 +20,7 @@ initRoutes(app);
 app.get("/", (req, res) => {
   res.json({ message: "GoogleCloud - Welcome to the back-end application server.js [express node.js]." });
 });
-
-const port = 8080;
+const port = process.env.PORT || 8080;
 app.listen(port, () => {
   console.log(`Running at localhost:${port}`);
 });
