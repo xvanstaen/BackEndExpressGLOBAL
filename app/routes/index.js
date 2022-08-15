@@ -5,7 +5,6 @@ const tutorials =  require("../controllers/tutorial.controller.js");
 let routes = (app) => {
   router.post("/upload", controller.upload);
   router.get("/files", controller.getListFiles);
-  router.get("/files", controller.getListFiles);
   router.get("/files/:name", controller.download);
   router.get("/meta/:name", controller.downloadObjMeta);
   router.get("/lBucket", controller.listBuckets);
