@@ -26,6 +26,13 @@ var optionsB = {
     useUnifiedTopology: true,
     dbName:"XMVITdb"
   }
+
+  var optionsA = {
+    serverApi: ServerApiVersion.v1 ,
+    useNewUrlParser: true,
+    useUnifiedTopology: true,
+    dbName:"XMVITdb"
+  }
  
 var current_dbName = "XMVITdb";
 var previous_dbName = '';
@@ -47,7 +54,7 @@ if (previous_dbName!== current_dbName){
   optionsB.dbName = current_dbName;
   previous_dbName = current_dbName;
   db.mongoose
-    .connect(db.url, optionsB)
+    .connect(db.url, optionsA)
     .then(() => {
       console.log("Connected to MONGO DB " + optionsB.dbName + '  on url= ' + db.url);
     })
