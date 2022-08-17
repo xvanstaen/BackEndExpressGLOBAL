@@ -11,11 +11,13 @@ findAllPublished
 const processFile = require("../middleware/upload");
 const { format } = require("util");
 const { Storage } = require("@google-cloud/storage");
+const { Console } = require("console");
 
 // Instantiate a storage client with credentials
 //const storage = new Storage({ keyFilename: "google-cloud-key.json" });
 const storage = new Storage();
 var bucket = storage.bucket("xmv_messages");
+
 
 async function  enableUniformBucketLevelAccess(bucketName) {
   await storage.bucket(bucketName).setMetadata({
@@ -37,9 +39,14 @@ const upload = async (req, res) => {
     if (!req.file) {
       return res.status(400).send({ message: "Please upload a file!" });
     }
+    const newMetadata = {
+      cacheControl: 'public,max-age=0',
+      contentType: 'application/json'
+    };
     // Create a new blob in the bucket and upload the file data.
-
     const blob = bucket.file(req.file.originalname);
+    blob.metadata.contentType='application/json';
+    blob.metadata.cacheControl= 'public,max-age=0';
     const blobStream = blob.createWriteStream({
       resumable: false,
     });
@@ -68,10 +75,24 @@ const upload = async (req, res) => {
                 //url: publicUrl,
           });
         }
-      res.status(200).send({
-        message: "Uploaded the file successfully: " + req.file.originalname,
-        url: publicUrl,
-      });
+
+       
+        try{
+
+          const [metaData] = await bucket.file(req.file.originalname).setMetadata(newMetadata);
+          console.log('METADATA UPDATED');
+          res.status(200).send({
+            message: "Uploaded the file successfully: " + req.file.originalname,
+            url: publicUrl,
+          });
+        }
+        catch (error) {
+          console.log('METADATA not UPDATED',error.status);
+        }
+
+
+
+
     });
     blobStream.end(req.file.buffer);
   } catch (err) {
@@ -80,6 +101,22 @@ const upload = async (req, res) => {
     });
   }
 };
+
+const updateMeta = async (req, res) => {
+  const newMetadata = {
+    cacheControl: 'public,max-age=0',
+    contentType: 'application/json'
+  };
+  bucket = storage.bucket(req.query.bucket);
+  try {
+    const [metaData] = await bucket.file(req.params.name).setMetadata(newMetadata);
+    res.status(200).send({
+      message: "MetaData successfully updated "
+    });
+  } catch (err) {
+
+  }
+}
 
 const getListFiles = async (req, res) => {
   try {
@@ -158,4 +195,6 @@ module.exports = {
   download,
   downloadObjMeta,
   listBuckets,
+  updateMeta,
+  
 };
