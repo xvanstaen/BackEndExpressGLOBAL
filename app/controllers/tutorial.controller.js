@@ -8,34 +8,36 @@ deleteAll
 findAllPublished
 */
 
-
 // Access to MONGO-DB 
 
-
-
 const { ServerApiVersion } = require('mongodb');
+
+
+/** x509 certification is not used; better to use id + psw to access in test and prod 
+ 
 //const credentials ="/Users/xaviervanstaen/X509-cert-6982656651602215038.pem";
 const credentials ="/etc/ssl/X509-cert-MongoDB.pem";
-
-
 var optionsB = {
     sslKey: credentials,
     sslCert: credentials,
     serverApi: ServerApiVersion.v1 ,
     useNewUrlParser: true,
     useUnifiedTopology: true,
-    dbName:"XMVITdb"
+    dbName:""
   }
+ */
 
-  var optionsA = {
+var optionsA = {
     serverApi: ServerApiVersion.v1 ,
     useNewUrlParser: true,
     useUnifiedTopology: true,
-    dbName:"XMVITdb"
+    dbName:""
   }
  
-var current_dbName = "XMVITdb";
+var current_dbName = "init";
 var previous_dbName = '';
+
+var callFunction = '';
  
 const dbConfig = require("../config/db.config.js"); // contains the mongodb url
 const mongoose = require("mongoose");
@@ -43,26 +45,45 @@ mongoose.Promise = global.Promise;
 const db = {};
 db.mongoose = mongoose;
 db.url = dbConfig.url;
+
+
+/***************  needed for each database *****************/
+/* ================ */
 db.tutorials = require("../models/tutorial.model")(mongoose);
+db.tutorials.collection.name='tutorials';
 const Tutorial = db.tutorials;
 
+/* ================ */
+db.config = require("../models/config.model")(mongoose);
+db.config.collection.name='configServer';
+const Config = db.config;
+/************************************************************/
+
+//async function accessMongo(){
 async function accessMongo(){
-if (previous_dbName!== current_dbName){
-  if (previous_dbName!=='') {
-    mongoose.connection.close();
-  }
-  optionsB.dbName = current_dbName;
-  previous_dbName = current_dbName;
-  db.mongoose
-    .connect(db.url, optionsA)
-    .then(() => {
-      console.log("Connected to MONGO DB " + optionsB.dbName + '  on url= ' + db.url);
-    })
-    .catch(err => {
-      console.log("Cannot connect to MONGO DB!" + optionsB.dbName + '  error is ', err);
-      process.exit();
-});
-}
+    if (previous_dbName!== current_dbName){
+        if (previous_dbName!=='') {
+          // seems mongoose does not accept to connect to more than one dabase
+          // db.$namedb keeps the value of the first db opened 
+              mongoose.connection.close();
+        }
+        optionsA.dbName = current_dbName;
+        previous_dbName = current_dbName;
+        Config.db.name=current_dbName;
+
+        await db.mongoose
+          .connect(db.url, optionsA)
+          .then(() => {
+            console.log("Connected to MONGO DB " + optionsA.dbName + '  on url= ' + db.url);
+  
+
+          })
+          .catch(err => {
+            console.log("Cannot connect to MONGO DB!" + optionsA.dbName + '  error is ', err);
+            process.exit();
+          });
+
+    } 
 }
 
 
@@ -78,7 +99,7 @@ exports.insert = (req, res) => {
        res.status(450).send({ message: "Content cannot be empty!" });
        return;
       }
-      // Create a Tutorial
+  // Create a Tutorial
   const tutorial = new Tutorial({
     title: req.body.title,
     description: req.body.description,
@@ -86,43 +107,20 @@ exports.insert = (req, res) => {
   });
   // Save Tutorial in the database
  
-  tutorial
-    .save(tutorial)
+  tutorial.save(tutorial)
     .then(data => {
-
        res.status(200).send(data);
        return;
-    })
-    .catch(err => {
-
-          return res.status(500).send({
-            message:
-              err.message || "Some error occurred while creating the Tutorial."
-          });
-
-    });
-};
-
-// Retrieve all Tutorials from the database.
-exports.findByTitle = (req, res) => {
-  accessMongo();
-    var title = req.query.title;
- // var isSent=false;
-    var condition = title ? { title: { $regex: new RegExp(title), $options: "i" } } : {};
-    Tutorial.find(condition)
-      .then(data => {
-        //isSent=true;
-        return res.send(data);
       })
-      .catch(err => {
-        //if (isSent===false){
-            return res.status(500).send({
-              message:
-                err.message || "Some error occurred while retrieving tutorials."
-            });
-       // }
-      });
+    .catch(err => {
+        return res.status(500).send({
+            message:
+            err.message || "Some error occurred while creating the Tutorial."
+          });
+       });
 };
+
+
 
 // Find a single Tutorial with an id
 exports.findOne = (req, res) => {
@@ -236,3 +234,55 @@ exports.findAllPublished = (req, res) => {
      
     });
 };
+
+// Retrieve all Tutorials from the database.
+exports.findByTitle = (req, res) => {
+  current_dbName='XMVITdb';
+  var title = req.query.title;
+  loop=0;
+  // var isSent=false;
+  var condition = title ? { title: { $regex: new RegExp(title), $options: "i" } } : {};
+  const connected = accessMongo().then(result => {
+    Tutorial.find(condition)
+      .then(data => {
+        return res.send(data);
+      })
+      .catch(err => {
+            return res.status(500).send({
+              message:
+                err.message || "Some error occurred while retrieving tutorials."
+            });
+      });
+  });
+};
+
+// Retrieve config from the database.
+exports.findCollection = (req, res) => {
+  if (req.params.db!==''){
+    current_dbName=req.params.db;
+  }
+
+  // find by baseUrl --- could be more a general parameter containing a string
+  var baseUrl = req.query.baseUrl;
+
+  db.config.collection.collectionName=req.params.collection;
+  db.config.collection.name=req.params.collection;
+
+  var condition = baseUrl ? { baseUrl: { $regex: new RegExp(baseUrl), $options: "i" } } : {};
+
+  const connected = accessMongo().then
+   (result => {
+        Config.find(condition)
+          .then(data => {
+            return res.send(data);
+          })
+          .catch(err => {
+                return res.status(500).send({
+                  message:
+                    err.message || "Some error occurred while retrieving config"
+                });
+          });
+    });
+};
+
+

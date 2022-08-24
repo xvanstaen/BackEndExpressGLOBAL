@@ -33,21 +33,27 @@ const upload = async (req, res) => {
   try {
     if (req.query.bucket!==''){
       bucket = storage.bucket(req.query.bucket);
+      bucket.projectId=req.params.projectId;
       enableUniformBucketLevelAccess(req.query.bucket);
     } 
     await processFile(req, res);
     if (!req.file) {
       return res.status(400).send({ message: "Please upload a file!" });
     }
-    const newMetadata = {
-      cacheControl: 'public,max-age=0',
-      contentType: 'application/json'
-    };
-    // Create a new blob in the bucket and upload the file data.
+
+    var contentType='';
+    if (req.params.contentType==='json'){
+      contentType='application/json';
+    }
+
+    // Create a new blob in the bucket and upload the file data. req.params.name
     const blob = bucket.file(req.file.originalname);
-    blob.metadata.contentType='application/json';
-    blob.metadata.cacheControl= 'public,max-age=0';
+
     const blobStream = blob.createWriteStream({
+      metadata: {
+        cacheControl: req.params.cacheControl,
+        contentType: contentType
+      },
       resumable: false,
     });
     blobStream.on("error", (err) => {
@@ -55,12 +61,15 @@ const upload = async (req, res) => {
     });
     blobStream.on("finish", async (data) => {
       // Create URL for directly file access via HTTP.
+      /** THIS IS NEEDED ONLY IF OBJECT IS NOT PUBLIC 
+       ** NOT NEEDED IN THE WAY SECURITY ACCESS IS SET UP AT OBJECT LEVEL 
       const publicUrl = format(
         `https://storage.googleapis.com/${bucket.name}/${blob.name}`
       );
       try {
         // Make the file public
-        //await bucket.file(req.file.originalname).makePublic();
+        await bucket.file(req.file.originalname).makePublic();
+        next();
       } 
       catch (err){
           if (err.code == "LIMIT_FILE_SIZE") {
@@ -75,23 +84,12 @@ const upload = async (req, res) => {
                 //url: publicUrl,
           });
         }
-
-       
-        try{
-
-          const [metaData] = await bucket.file(req.file.originalname).setMetadata(newMetadata);
-          console.log('METADATA UPDATED');
-          res.status(200).send({
-            message: "Uploaded the file successfully: " + req.file.originalname,
-            url: publicUrl,
-          });
-        }
-        catch (error) {
-          console.log('METADATA not UPDATED',error.status);
-        }
+         */
 
 
-
+        res.status(200).send({
+          message: "Uploaded the file successfully: " + req.file.originalname
+        });
 
     });
     blobStream.end(req.file.buffer);
@@ -108,6 +106,7 @@ const updateMeta = async (req, res) => {
     contentType: 'application/json'
   };
   bucket = storage.bucket(req.query.bucket);
+  bucket.projectId=req.params.projectId;
   try {
     const [metaData] = await bucket.file(req.params.name).setMetadata(newMetadata);
     res.status(200).send({
@@ -122,7 +121,7 @@ const getListFiles = async (req, res) => {
   try {
     if (req.query.bucket!==''){
         bucket = storage.bucket(req.query.bucket);
-        
+        bucket.projectId=req.params.projectId;
       } 
     const [files] = await bucket.getFiles();
     let fileInfos = [];
@@ -141,11 +140,33 @@ const getListFiles = async (req, res) => {
   }
 };
 
+const getListMetaDataFiles = async (req, res) => {
+  try {
+    if (req.query.bucket!==''){
+        bucket = storage.bucket(req.query.bucket);
+        bucket.projectId=req.params.projectId;
+      } 
+    const [files] = await bucket.getFiles();
+    let fileInfos = [];
+    files.forEach((file) => {
+      fileInfos.push({
+        items: file.metadata,
+      });
+    });
+    res.status(200).send(fileInfos);
+  } catch (err) {
+    console.log(err);
+    res.status(500).send({
+      message: "Unable to read list of files!",
+    });
+  }
+};
 
 const download = async (req, res) => {
   try {
     if (req.query.bucket!==''){
       bucket = storage.bucket(req.query.bucket);
+      bucket.projectId=req.params.projectId;
     } 
     const [metaData] = await bucket.file(req.params.name).getMetadata();
     res.redirect(metaData.mediaLink);
@@ -161,6 +182,7 @@ const downloadObjMeta = async (req, res) => {
   try {
     if (req.query.bucket!==''){
       bucket = storage.bucket(req.query.bucket);
+      bucket.projectId=req.params.projectId;
     } 
     const [metaData] = await bucket.file(req.params.name).getMetadata();
     res.status(200).send(metaData);
@@ -174,6 +196,7 @@ const downloadObjMeta = async (req, res) => {
 
 const listBuckets = async (req, res) => {
   try {
+    storage.projectId=req.params.projectId;
     const [buckets] = await storage.getBuckets();
     let BuckInfos = [];
     buckets.forEach(bucket => {
@@ -189,6 +212,72 @@ const listBuckets = async (req, res) => {
   }
 };
 
+const copyObject = async (req, res) => {
+  try {
+    bucket = storage.bucket(req.query.bucket);
+    bucket.projectId=req.params.projectId;
+    await bucket.file(req.params.srcFilename)
+    .copy(storage.bucket(req.params.destBucketName).file(req.params.destFileName));
+
+    res.status(200).send({
+      message: "Object is copied "
+    });
+  } catch (err) {
+    res.status(500).send({
+      message: "Could not copy the object " + err,
+    });
+  }
+};
+
+const renameObject = async (req, res) => {
+  try {
+    bucket = storage.bucket(req.query.bucket);
+    bucket.projectId=req.params.projectId;
+    await bucket.file(req.params.SRCname)
+    .rename(req.params.DESTname);
+    res.status(200).send({
+      message: "Object is renamed "
+    });
+  } catch (err) {
+    res.status(500).send({
+      message: "Could not rename the object " + err,
+    });
+  }
+};
+
+const moveObject = async (req, res) => {
+  try {
+    bucket = storage.bucket(req.query.bucket);
+    bucket.projectId=req.params.projectId;
+    await bucket.file(req.params.srcFilename)
+    .move(req.params.destFileName);
+    res.status(200).send({
+      message: "Object is renamed "
+    });
+  } catch (err) {
+    res.status(500).send({
+      message: "Could not rename the object " + err,
+    });
+  }
+};
+
+const deleteObject = async (req, res) => {
+  try {
+    bucket = storage.bucket(req.query.bucket);
+    bucket.projectId=req.params.projectId;
+    await bucket.file(req.params.name)
+    .delete();
+    res.status(200).send({
+      message: "Object is deleted "
+    });
+  } catch (err) {
+    res.status(500).send({
+      message: "Could not delete the object " + err,
+    });
+  }
+};
+
+
 module.exports = {
   upload,
   getListFiles,
@@ -196,5 +285,8 @@ module.exports = {
   downloadObjMeta,
   listBuckets,
   updateMeta,
+  deleteObject,
+  renameObject,
+  getListMetaDataFiles,
   
 };
