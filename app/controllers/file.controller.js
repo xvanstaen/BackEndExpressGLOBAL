@@ -230,6 +230,9 @@ const copyObject = async (req, res) => {
 
 const moveObject = async (req, res) => {
   try {
+    var DestBucket=req.params.DESTbucket;
+    var DestObject=req.params.DESTname;
+    var SRCObject=req.params.SRCname;
     bucket = storage.bucket(req.query.bucket);
     bucket.projectId=req.params.projectId;
     await bucket.file(req.params.SRCname)
@@ -239,7 +242,9 @@ const moveObject = async (req, res) => {
     });
   } catch (err) {
     res.status(502).send({
-      message: "Could not move the object to bucket " + req.params.DESTbucket + '  error='+ err,
+      message: "Could not move the object to bucket " + req.params.DESTbucket + 
+      'Parameters: DESTbucket=' + DestBucket + 
+      ' SRCobject=' + SRCObject  + ' Destobject=' + DestObject + ' error='+ err,
     });
   }
 };
