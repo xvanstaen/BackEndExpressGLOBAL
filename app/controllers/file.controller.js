@@ -233,13 +233,13 @@ const moveObject = async (req, res) => {
     bucket = storage.bucket(req.query.bucket);
     bucket.projectId=req.params.projectId;
     await bucket.file(req.params.SRCname)
-    .move(storage.bucket(req.params.DESTbucket).file(req.params.destFileName));
+    .move(storage.bucket(req.params.DESTbucket).file(req.params.DESTname));
     res.status(200).send({
       message: "Object moved to bucket " + req.params.DESTname
     });
   } catch (err) {
     res.status(502).send({
-      message: "Could not move the object to bucket " + req.params.destBucketName + '  error='+ err,
+      message: "Could not move the object to bucket " + req.params.DESTbucket + '  error='+ err,
     });
   }
 };
