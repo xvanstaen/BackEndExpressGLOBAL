@@ -41,18 +41,13 @@ const upload = async (req, res) => {
       return res.status(400).send({ message: "Please upload a file!" });
     }
 
-    var contentType='';
-    if (req.params.contentType==='json'){
-      contentType='application/json';
-    }
-
     // Create a new blob in the bucket and upload the file data. req.params.name
     const blob = bucket.file(req.file.originalname);
 
     const blobStream = blob.createWriteStream({
       metadata: {
         cacheControl: req.params.cacheControl,
-        contentType: contentType
+        contentType: req.params.contentType
       },
       resumable: false,
     });
@@ -102,7 +97,7 @@ const upload = async (req, res) => {
 
 const updateMeta = async (req, res) => {
   const newMetadata = {
-    cacheControl: 'public,max-age=0',
+    cacheControl: 'public,max-age=0,no-cache,no-store',
     contentType: 'application/json'
   };
   bucket = storage.bucket(req.query.bucket);
@@ -113,7 +108,9 @@ const updateMeta = async (req, res) => {
       message: "MetaData successfully updated "
     });
   } catch (err) {
-
+    res.status(500).send({
+      message: "MetaData not updated - returned error is " + err
+    });
   }
 }
 
@@ -162,23 +159,25 @@ const getListMetaDataFiles = async (req, res) => {
   }
 };
 
-const download = async (req, res) => {
+const getFileContent = async (req, res) => {
   try {
     if (req.query.bucket!==''){
       bucket = storage.bucket(req.query.bucket);
       bucket.projectId=req.params.projectId;
     } 
     const [metaData] = await bucket.file(req.params.name).getMetadata();
+    console.log("File found & link is " + metaData.mediaLink);
     res.redirect(metaData.mediaLink);
     
   } catch (err) {
-    res.status(500).send({
-      message: "Could not download the file. " + err,
+    console.log("Could not get the file. " + err);
+    res.status(404).send({
+      message: "Could not get the file. " + err,
     });
   }
 };
 
-const downloadObjMeta = async (req, res) => {
+const getObjectMeta = async (req, res) => {
   try {
     if (req.query.bucket!==''){
       bucket = storage.bucket(req.query.bucket);
@@ -229,6 +228,22 @@ const copyObject = async (req, res) => {
   }
 };
 
+const moveObject = async (req, res) => {
+  try {
+    bucket = storage.bucket(req.query.bucket);
+    bucket.projectId=req.params.projectId;
+    await bucket.file(req.params.srcFilename)
+    .move(storage.bucket(req.params.destBucketName).file(req.params.destFileName));
+    res.status(200).send({
+      message: "Object moved to bucket " + req.params.destBucketName
+    });
+  } catch (err) {
+    res.status(500).send({
+      message: "Could not move the object to bucket " + req.params.destBucketName + '  error='+ err,
+    });
+  }
+};
+
 const renameObject = async (req, res) => {
   try {
     bucket = storage.bucket(req.query.bucket);
@@ -245,21 +260,7 @@ const renameObject = async (req, res) => {
   }
 };
 
-const moveObject = async (req, res) => {
-  try {
-    bucket = storage.bucket(req.query.bucket);
-    bucket.projectId=req.params.projectId;
-    await bucket.file(req.params.srcFilename)
-    .move(req.params.destFileName);
-    res.status(200).send({
-      message: "Object is renamed "
-    });
-  } catch (err) {
-    res.status(500).send({
-      message: "Could not rename the object " + err,
-    });
-  }
-};
+
 
 const deleteObject = async (req, res) => {
   try {
@@ -281,12 +282,14 @@ const deleteObject = async (req, res) => {
 module.exports = {
   upload,
   getListFiles,
-  download,
-  downloadObjMeta,
+  getFileContent,
+  getObjectMeta,
   listBuckets,
   updateMeta,
   deleteObject,
   renameObject,
   getListMetaDataFiles,
+  moveObject,
+  copyObject
   
 };

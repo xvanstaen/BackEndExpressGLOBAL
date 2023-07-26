@@ -5,14 +5,16 @@ const tutorials =  require("../controllers/tutorial.controller.js");
 //const configs =  require("../controllers/config.controller.js");
 let routes = (app) => {
   router.post("/upload/:projectId/:cacheControl/:contentType", controller.upload);
-  router.post("/updateMeta/:projectId/:name", controller.updateMeta);
+  router.post("/updateMeta/:projectId/:name/newMetaData", controller.updateMeta);
   router.get("/files/:projectId", controller.getListFiles);
   router.get("/filesmeta/:projectId", controller.getListMetaDataFiles);
-  router.get("/files/:projectId/:name", controller.download);
-  router.get("/meta/:projectId/:name", controller.downloadObjMeta);
+  router.get("/files/:projectId/:name", controller.getFileContent);
+  router.get("/meta/:projectId/:name", controller.getObjectMeta);
   router.get("/lBucket/:projectId", controller.listBuckets);
   router.get("/delete/:projectId/:name", controller.deleteObject);
   router.get("/rename/:projectId/:SRCname/:DESTname", controller.renameObject);
+  router.get("/move/:projectId/:DESTbucket/:name", controller.moveObject);
+  router.get("/copy/:projectId/:DESTbucket/:SRCname/:DESTname", controller.copyObject);
 
 /*============ CONFIG  =============*/
   // Retrieve configServer file
