@@ -5,7 +5,7 @@ const tutorials =  require("../controllers/tutorial.controller.js");
 //const configs =  require("../controllers/config.controller.js");
 let routes = (app) => {
   router.post("/upload/:projectId/:cacheControl/:contentType", controller.upload);
-  router.post("/updateMeta/:projectId/:name/newMetaData", controller.updateMeta);
+  router.post("/updateMeta/:projectId/:name/:newMetaData", controller.updateMeta);
   router.get("/files/:projectId", controller.getListFiles);
   router.get("/filesmeta/:projectId", controller.getListMetaDataFiles);
   router.get("/files/:projectId/:name", controller.getFileContent);

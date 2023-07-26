@@ -96,16 +96,20 @@ const upload = async (req, res) => {
 };
 
 const updateMeta = async (req, res) => {
+  /**
   const newMetadata = {
     cacheControl: 'public,max-age=0,no-cache,no-store',
     contentType: 'application/json'
   };
+   */
   bucket = storage.bucket(req.query.bucket);
   bucket.projectId=req.params.projectId;
+  console.log('update newMetadata=' + req.params.newMetadata);
   try {
-    const [metaData] = await bucket.file(req.params.name).setMetadata(newMetadata);
+    const [metaData] = await bucket.file(req.params.name).setMetadata(req.params.newMetadata);
+    console.log('Metadata=' + metaData);
     res.status(200).send({
-      message: "MetaData successfully updated "
+      message: "MetaData successfully updated " + metaData
     });
   } catch (err) {
     res.status(500).send({
@@ -219,7 +223,7 @@ const copyObject = async (req, res) => {
     .copy(storage.bucket(req.params.DESTbucket).file(req.params.DESTname));
 
     res.status(200).send({
-      message: "Object is copied "
+      message: "Object is copied as" + req.params.DESTname + ' in bucket ' + req.params.DESTbucket
     });
   } catch (err) {
     res.status(505).send({
@@ -238,7 +242,7 @@ const moveObject = async (req, res) => {
     await bucket.file(req.params.SRCname)
     .move(storage.bucket(req.params.DESTbucket).file(req.params.DESTname));
     res.status(200).send({
-      message: "Object moved to bucket " + req.params.DESTname
+      message: "Object moved to bucket " + req.params.DESTbucket
     });
   } catch (err) {
     res.status(502).send({
