@@ -215,14 +215,14 @@ const copyObject = async (req, res) => {
   try {
     bucket = storage.bucket(req.query.bucket);
     bucket.projectId=req.params.projectId;
-    await bucket.file(req.params.srcFilename)
-    .copy(storage.bucket(req.params.destBucketName).file(req.params.destFileName));
+    await bucket.file(req.params.SRCname)
+    .copy(storage.bucket(req.params.DESTbucket).file(req.params.DESTname));
 
     res.status(200).send({
       message: "Object is copied "
     });
   } catch (err) {
-    res.status(500).send({
+    res.status(505).send({
       message: "Could not copy the object " + err,
     });
   }
@@ -232,13 +232,13 @@ const moveObject = async (req, res) => {
   try {
     bucket = storage.bucket(req.query.bucket);
     bucket.projectId=req.params.projectId;
-    await bucket.file(req.params.srcFilename)
-    .move(storage.bucket(req.params.destBucketName).file(req.params.destFileName));
+    await bucket.file(req.params.SRCname)
+    .move(storage.bucket(req.params.DESTbucket).file(req.params.destFileName));
     res.status(200).send({
-      message: "Object moved to bucket " + req.params.destBucketName
+      message: "Object moved to bucket " + req.params.DESTname
     });
   } catch (err) {
-    res.status(500).send({
+    res.status(502).send({
       message: "Could not move the object to bucket " + req.params.destBucketName + '  error='+ err,
     });
   }

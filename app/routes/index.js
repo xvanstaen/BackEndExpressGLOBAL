@@ -13,7 +13,7 @@ let routes = (app) => {
   router.get("/lBucket/:projectId", controller.listBuckets);
   router.get("/delete/:projectId/:name", controller.deleteObject);
   router.get("/rename/:projectId/:SRCname/:DESTname", controller.renameObject);
-  router.get("/move/:projectId/:DESTbucket/:name", controller.moveObject);
+  router.get("/move/:projectId/:DESTbucket/:SRCname/:DESTname", controller.moveObject);
   router.get("/copy/:projectId/:DESTbucket/:SRCname/:DESTname", controller.copyObject);
 
 /*============ CONFIG  =============*/
