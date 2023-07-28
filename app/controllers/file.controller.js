@@ -96,7 +96,7 @@ const upload = async (req, res) => {
 };
 
 const updateMeta = async (req, res) => {
-  /**
+ /*
   const newMetadata = {
     cacheControl: 'public,max-age=0,no-cache,no-store',
     contentType: 'application/json'
@@ -104,12 +104,12 @@ const updateMeta = async (req, res) => {
    */
   bucket = storage.bucket(req.query.bucket);
   bucket.projectId=req.params.projectId;
-  console.log('update newMetadata=' + req.params.newMetadata);
+
   try {
-    const [metaData] = await bucket.file(req.params.name).setMetadata(req.params.newMetadata);
-    console.log('Metadata=' + metaData);
+    const [metaData] = await bucket.file(req.params.name).setMetadata(req.params.newMetaData);
+
     res.status(200).send({
-      message: "MetaData successfully updated " + metaData
+      message: "MetaData successfully updated "
     });
   } catch (err) {
     res.status(500).send({
@@ -134,7 +134,6 @@ const getListFiles = async (req, res) => {
     });
     res.status(200).send(fileInfos);
   } catch (err) {
-    console.log(err);
     res.status(500).send({
       message: "Unable to read list of files!",
     });
