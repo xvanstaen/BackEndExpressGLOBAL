@@ -8,10 +8,13 @@ deleteAll
 findAllPublished
 */
 
+
 const processFile = require("../middleware/upload");
 const { format } = require("util");
 const { Storage } = require("@google-cloud/storage");
 const { Console } = require("console");
+const { stringify } = require("querystring");
+const { MAX_RETRY_DEFAULT } = require("@google-cloud/storage/build/src/storage");
 
 // Instantiate a storage client with credentials
 //const storage = new Storage({ keyFilename: "google-cloud-key.json" });
@@ -164,6 +167,7 @@ const getListMetaDataFiles = async (req, res) => {
 
 const getFileContent = async (req, res) => {
   try {
+    console.log('===> before getFileContent()');
     if (req.query.bucket!==''){
       bucket = storage.bucket(req.query.bucket);
       bucket.projectId=req.params.projectId;
@@ -286,6 +290,319 @@ const deleteObject = async (req, res) => {
   }
 };
 
+const updateFileSystem = async (req, res) => {
+  try {
+    console.log('===> before updateFileSystemt()');
+    const newMetadata = {
+      cacheControl: 'public,max-age=0,no-cache,no-store',
+      contentType: 'application/json'
+    };
+    if (req.query.bucket!==''){
+      bucket = storage.bucket(req.query.bucket);
+      bucket.projectId=req.params.projectId;
+      enableUniformBucketLevelAccess(req.query.bucket);
+    } 
+    
+    console.log('req.params.inData=',req.params.inData);
+    let inData=JSON.parse(req.params.inData);
+
+    console.log('req.params.inData='+inData.action+' '+inData.createdAt);
+    await bucket.file(req.params.name).setMetadata(newMetadata);
+    const [fileData] = await bucket.file(req.params.name).download();
+    try{
+
+      let theFileParse=JSON.parse(fileData);
+      console.log('theFileParse=',theFileParse);
+
+      const theStatus=checkData( theFileParse, inData);
+      if (theStatus==='err-0'){
+          console.log(' status after checkData ' + theStatus);
+          res.send(theStatus);
+          
+      } else  if (typeof theStatus === 'object'){
+          console.log(' status after checkData  is an object' );
+          console.log('===> after processing fileSystem - content of the file is ' + JSON.stringify(theStatus));
+        
+          await bucket.file(req.params.name).save(JSON.stringify(theStatus));
+          try{
+            console.log('after save is a success');
+            res.send(theStatus);
+          } 
+          catch (err) {
+            console.log('after save is a failure ' + err);
+            res.status(708).send(theStatus);
+          }
+
+      } else {
+
+        console.log(' error after checkData ' + theStatus);
+        res.status(909).send({
+          message: "error after checkData "
+        });
+      }
+    }  
+    
+    catch (err) {
+      // file does not exist
+      /*
+       if (inData.action==="lock"){
+            var theFileParse=[];
+            const theStatus=checkData(theFileParse, inData);
+            if (typeof theStatus === 'object'){
+                  console.log('file not found & record created');
+                  await bucket.file(req.params.name).save(JSON.stringify(theStatus));
+                  try{
+                    console.log('on Lock - after save is a success');
+                    res.send(theStatus);
+                  } 
+                  catch (err) {
+                    console.log('on Lock - after save is a failure ' + err);
+                    return res.status(708).send({
+                      message: "on Lock - after save is a failure " + err
+                    });
+                  }
+            }
+            else {
+              console.log(' error on Lock after checkData ' + theStatus);
+              return res.status(909).send({
+                message: "error on Lock after checkData " + theStatus
+              });
+            }
+
+        } else if (inData.action==="unlock"){
+          return res.status(809).send({
+            message: "on Unlock Err809 - file not found "
+          });
+                 
+        } else {
+          return res.status(819).send({
+            message: "on Unlock Err819 - file not found & action unkown = " + inData.action
+          });
+        }
+          */
+          console.log('===> after updateFileSystemt() - ERROR 808 -->  '+err);
+          console.log('Should process empty file'); 
+          res.status(808).send({
+            message: "could not process updateFileSystem "
+          });
+          
+    }
+    
+  } catch (err) {
+    let inData=JSON.parse(req.params.inData);
+    if (inData.action==="lock"){
+      var theFileParse=[];
+      const theStatus=checkData(theFileParse, inData);
+      if (typeof theStatus === 'object'){
+            console.log('file not found & record created');
+            await bucket.file(req.params.name).save(JSON.stringify(theStatus));
+            try{
+              console.log('on Lock - after save is a success');
+              res.send(theStatus);
+            } 
+            catch (err) {
+              console.log('on Lock - after save is a failure ' + err);
+              return res.status(708).send({
+                message: "on Lock - after save is a failure " + err
+              });
+            }
+      }
+      else {
+        console.log(' error on Lock after checkData ' + theStatus);
+        return res.status(909).send({
+          message: "error on Lock after checkData " + theStatus
+        });
+      }
+
+  } else if (inData.action==="unlock"){
+    return res.status(809).send({
+      message: "on Unlock Err809 - file not found "
+    });
+           
+  } else {
+    return res.status(819).send({
+      message: "on Unlock Err819 - file not found & action unkown = " + inData.action
+    });
+  }
+  /*
+    console.log("updateFileSystem - Could not get the file. 408 " + err);
+    res.status(408).send({
+      message: "Could not get the file. " + err,
+    });
+  }
+  */
+}
+};
+
+
+function checkData(fileSystem, inData){
+  console.log('start checkData');
+  if (fileSystem.length > 0 ){
+      for (var i=0; i<fileSystem.length && (fileSystem[i].object!==inData.object || fileSystem[i].bucket!==inData.bucket); i++){}
+      if (inData.action==="lock"){
+          if (i===fileSystem.length ){
+              // record is not locked so create a new record and flag lock to true
+              createRecord(fileSystem,inData);
+              console.log('create record ' + inData.object );
+              //const status=saveFile(config, fileSystem, object, bucket);
+              return (fileSystem);
+          } else { // record already exists and already locked
+              console.log('record ' + inData.object + 'already exists and already locked - Error 300');
+              // check wheter it has been locked form more than 1 hour
+              // if yes then lock it for this user
+              return(validateLock(fileSystem,inData,i));
+          }
+      } else if (inData.action==="unlock"){
+          if (i===fileSystem.length ){
+              // record is not found so cannot be unlocked
+              console.log('record not found, so cannot be unlocked - Error 700');
+              return('err-700');
+          } else { // record is found; delete it
+              fileSystem.splice(i,1);
+              return (fileSystem);
+          }
+      } else if (inData.action==="updatedAt"){
+          return(updatedAt(fileSystem,inData,i));
+      } else {
+        console.log('wrong inData.action ==> return err-500');
+        return('err-500');} // wrong action
+  } else { 
+      if (inData.action==="lock"){
+          console.log('fileSystem is empty; createRecord');
+          createRecord(fileSystem,inData);
+          return (fileSystem);
+      } else { 
+          console.log('fileSystem is empty;');
+          return('err-0'); }
+  }
+}
+
+function createRecord(fileSystem, inData){
+
+  const recordSystem={
+    action:string="",// 'lock' or 'unlock'
+    bucket:string='', 
+    object:string='',
+    user:string="",
+    iWait:number=0,
+    status:number=0,
+    lock:number=0,
+    createdAt:string="",
+    updatedAt:string="" }
+
+  fileSystem.push(recordSystem);
+  fileSystem[fileSystem.length-1].bucket=inData.bucket;
+  fileSystem[fileSystem.length-1].object=inData.object;
+  fileSystem[fileSystem.length-1].byUser=inData.user;
+  fileSystem[fileSystem.length-1].lock=true;
+  
+  const theDate=new Date();
+  console.log('theDate=',theDate);
+  const myTime=theDate.toString().substring(16,18)+theDate.toString().substring(19,21)+theDate.toString().substring(22,24);
+  const myDate=convertDate(theDate,"YYYYMMDD") + myTime;
+  console.log('created & updatedAt=' +myDate);
+  fileSystem[fileSystem.length-1].createdAt=myDate;
+  fileSystem[fileSystem.length-1].updatedAt=myDate;
+}
+
+function validateLock(fileSystem, inData, record){
+  var stringHour='';
+  var stringMin='';
+  
+  const theHour=Number(fileSystem[record].updatedAt.substring(8,10)); // add xx hours;
+  if (theHour<10){
+      stringHour ='0'+ theHour.toString();
+  } else { 
+      stringHour = theHour.toString();
+  }
+  const theMin=Number(fileSystem[record].updatedAt.substring(10,12)) + 1; // add xx minutes
+  if (theMin<10){
+      stringMin ='0'+ theMin.toString();
+  } else { 
+      stringMin = theMin.toString();
+  }
+  const theTime = stringHour + stringMin + fileSystem[record].updatedAt.substring(12);
+  const refDate=fileSystem[record].updatedAt.substring(0,8) + theTime;
+  const theDate=new Date();
+  console.log('validateLock -> theDate=',theDate.toString());
+  const myTime=theDate.toString().substring(16,18)+theDate.toString().substring(19,21)+theDate.toString().substring(22,24);
+  const myDate = convertDate(theDate,"YYYYMMDD") + myTime;
+  console.log('validateLock -> myDate=' + myDate + ' refDate='+refDate);
+  if (myDate >refDate){
+      fileSystem[record].createdAt=myDate;
+      fileSystem[record].updatedAt=myDate;
+      fileSystem[record].bucket=inData.bucket;
+      fileSystem[record].object=inData.object;
+      fileSystem[record].byUser=inData.user;
+      return(fileSystem);
+  } else {
+      return(300);
+  }
+}
+
+function updatedAt(fileSystem){
+  const theDate=new Date();
+  const myTime=theDate.toString().substring(16,18)+theDate.toString().substring(19,21)+theDate.toString().substring(22,24);
+  const myDate=convertDate(theDate,"YYYYMMDD") + myTime;
+  fileSystem[fileSystem.length-1].updatedAt=myDate;
+  return(fileSystem);
+}
+
+function convertDate(theDate, theFormat) {
+  var formattedDate=theFormat;
+  var myDate=theDate.toString();
+  const tabMonth=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  console.log('convertDate myDate='+myDate);
+  var YY =myDate.substring(11,15);
+  for (var i=0; i<tabMonth.length & tabMonth[i]!== myDate.substring(4,7); i++){};
+  var MM =i+1;
+  var DD =myDate.substring(8,10);
+  console.log('convertDate date= '+ YY + ' ' + MM + " " + DD);
+  var iYear=0;
+  var iMonth=0;
+  var iDay=0;
+  var MM_String="";
+  var DD_String="";
+  
+  const sep1Pos0=theFormat.indexOf('/');
+  const sep2Pos0=theFormat.indexOf('-');
+  const sep1Pos1=theFormat.substring(sep1Pos0+1).indexOf('/');
+  const sep2Pos1=theFormat.substring(sep2Pos0+1).indexOf('-');
+
+  if (MM<10){
+      MM_String="0" + MM.toString();
+  }
+  else{
+      MM_String=MM.toString();
+  }
+  if (DD<10){
+      DD_String="0" + DD.toString();
+  }
+  else{
+     DD_String=DD.toString();
+  }
+
+
+  iYear=theFormat.indexOf("y")+1;
+  if (iYear===0) {iYear=theFormat.indexOf("Y")+1};
+  if (iYear===0) {formattedDate= ""} 
+  else{
+      iMonth=theFormat.indexOf("m")+1;
+      if (iMonth===0) {iMonth=theFormat.indexOf("M")+1};
+      if (iMonth===0) {formattedDate= ""} 
+      else{
+          iDay=theFormat.indexOf("d")+1;
+          if (iDay===0) {iDay=theFormat.indexOf("D")+1};
+          if (iDay===0) {formattedDate= ""} 
+          else{
+              formattedDate=formattedDate.replace(formattedDate.substring(iYear-1,iYear+3),YY.toString());
+              formattedDate=formattedDate.replace(formattedDate.substring(iMonth-1,iMonth+1),MM_String);
+              formattedDate=formattedDate.replace(formattedDate.substring(iDay-1,iDay+1),DD_String);
+          }
+      }
+  }    
+  return(formattedDate);
+}
 
 module.exports = {
   upload,
@@ -298,6 +615,7 @@ module.exports = {
   renameObject,
   getListMetaDataFiles,
   moveObject,
-  copyObject
+  copyObject,
+  updateFileSystem,
   
 };

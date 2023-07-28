@@ -21,10 +21,10 @@ initRoutes(app);
 
 
 app.get("/", (req, res) => {
-  res.json({ message: "GoogleCloud & MongoDB - Version 29JUL2023 - server.js [express node.js]." });
+  res.json({ message: "GoogleCloud & MongoDB - Version 29JUL2023 V3 - server.js [express node.js]." });
 });
 const port = process.env.PORT || 8080;
 app.listen(port, () => {
-  console.log(`Running at localhost:${port}`);
+  console.log(`==> Running V4 at localhost:${port}`);
 });
 
