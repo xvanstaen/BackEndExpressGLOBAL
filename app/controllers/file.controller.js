@@ -34,6 +34,7 @@ async function  enableUniformBucketLevelAccess(bucketName) {
 
 const upload = async (req, res) => {
   try {
+    //console.log(' ===> upload');
     if (req.query.bucket!==''){
       bucket = storage.bucket(req.query.bucket);
       bucket.projectId=req.params.projectId;
@@ -47,15 +48,21 @@ const upload = async (req, res) => {
     // Create a new blob in the bucket and upload the file data. req.params.name
     const blob = bucket.file(req.file.originalname);
 
+    if (req.params.contentType==='json') {
+      var theType='application/json';
+    }
     const blobStream = blob.createWriteStream({
       metadata: {
+        //cacheControl: 'public,max-age=0,no-cache,no-store',
+        //contentType: 'application/json'
         cacheControl: req.params.cacheControl,
-        contentType: req.params.contentType
+        contentType: theType
       },
       resumable: false,
     });
+
     blobStream.on("error", (err) => {
-      res.status(500).send({ message: err.message });
+      res.status(505).send({ message: err.message });
     });
     blobStream.on("finish", async (data) => {
       // Create URL for directly file access via HTTP.
@@ -84,7 +91,6 @@ const upload = async (req, res) => {
         }
          */
 
-
         res.status(200).send({
           message: "Uploaded the file successfully: " + req.file.originalname
         });
@@ -92,7 +98,7 @@ const upload = async (req, res) => {
     });
     blobStream.end(req.file.buffer);
   } catch (err) {
-    res.status(500).send({
+    res.status(515).send({
       message: `Could not upload the file: ${req.file.originalname}. ${err}`,
     });
   }
@@ -167,17 +173,17 @@ const getListMetaDataFiles = async (req, res) => {
 
 const getFileContent = async (req, res) => {
   try {
-    console.log('===> before getFileContent()');
+    //console.log('===> before getFileContent()');
     if (req.query.bucket!==''){
       bucket = storage.bucket(req.query.bucket);
       bucket.projectId=req.params.projectId;
     } 
     const [metaData] = await bucket.file(req.params.name).getMetadata();
-    console.log("File found & link is " + metaData.mediaLink);
+    //console.log("File found & link is " + metaData.mediaLink);
     res.redirect(metaData.mediaLink);
     
   } catch (err) {
-    console.log("Could not get the file. " + err);
+    //console.log("Could not get the file. " + err);
     res.status(404).send({
       message: "Could not get the file. " + err,
     });
@@ -292,7 +298,7 @@ const deleteObject = async (req, res) => {
 
 const updateFileSystem = async (req, res) => {
   try {
-    console.log('===> before updateFileSystemt()');
+    //console.log('===> before updateFileSystem()');
     const newMetadata = {
       cacheControl: 'public,max-age=0,no-cache,no-store',
       contentType: 'application/json'
@@ -302,103 +308,109 @@ const updateFileSystem = async (req, res) => {
       bucket.projectId=req.params.projectId;
       enableUniformBucketLevelAccess(req.query.bucket);
     } 
-    
-    console.log('req.params.inData=',req.params.inData);
+    let tabLock=JSON.parse(req.params.tabLock);
+    //console.log('req.params.tabLock=',req.params.tabLock);
+    //console.log('tabLock=',tabLock);
+    //console.log('req.params.inData=',req.params.inData);
     let inData=JSON.parse(req.params.inData);
 
-    console.log('req.params.inData='+inData.action+' '+inData.createdAt);
+    //console.log('req.params.inData='+inData.action+' '+inData.createdAt);
     await bucket.file(req.params.name).setMetadata(newMetadata);
     const [fileData] = await bucket.file(req.params.name).download();
     try{
-
+      var theStatus = [];
+      var onDestroy=false;
       let theFileParse=JSON.parse(fileData);
-      console.log('theFileParse=',theFileParse);
-
-      const theStatus=checkData( theFileParse, inData);
-      if (theStatus==='err-0'){
-          console.log(' status after checkData ' + theStatus);
-          res.send(theStatus);
+      //console.log('theFileParse=',theFileParse);
+      if (inData.action==='onDestroy'){
+        onDestroy=true;
+        for (var iWait=0; iWait<tabLock.length; iWait++){
           
-      } else  if (typeof theStatus === 'object'){
-          console.log(' status after checkData  is an object' );
-          console.log('===> after processing fileSystem - content of the file is ' + JSON.stringify(theStatus));
-        
+            if (tabLock[iWait].lock===1){
+              
+              inData.action='unlock';
+              inData.bucket=tabLock[iWait].bucket;
+              inData.object=tabLock[iWait].object;
+              inData.user=tabLock[iWait].user;
+              inData.createdAt=tabLock[iWait].createdAt;
+              inData.updatedAt=tabLock[iWait].updatedAt;
+              inData.iWait=iWait;
+              
+              theStatus =checkData(theFileParse, inData);
+              
+              if (typeof theStatus === 'object'){
+                //console.log('===>onDestroy -> theStatus = ' + JSON.stringify(theStatus));
+                
+                theFileParse = theStatus;
+              } else {console.log('===>onDestroy -> theStatus = ' + theStatus) }
+            }
+          }
+          theStatus=theFileParse;
+          //console.log('after onDestroy -> theFileParse = ' + JSON.stringify(theFileParse));
+          //console.log('after onDestroy -> theStatus = ' + JSON.stringify(theStatus));
+      } else {
+          theStatus=checkData( theFileParse, inData);
+      }
+      if (typeof theStatus === 'object' || onDestroy === true){
+          //console.log(' status after checkData  is an object' );
+          //console.log('===> after processing fileSystem - content of the file is ' + JSON.stringify(theStatus));
+          if (onDestroy === false){
+              for (var i=0; i<theStatus.length && (theStatus[i].object!==inData.object || theStatus[i].bucket!==inData.bucket); i++){}
+              if (inData.action==="lock" && i<theStatus.length){
+                tabLock[inData.iWait].createdAt = theStatus[i].createdAt;
+                tabLock[inData.iWait].updated = theStatus[i].updatedAt;
+                tabLock[inData.iWait].lock = 1;
+    
+              } else if (inData.action==="unlock" && i===theStatus.length){
+                tabLock[inData.iWait].lock = 0;
+              } else if (inData.action==="updatedAt" && i<theStatus.length){
+                tabLock[inData.iWait].updated = theStatus[i].updatedAt;
+              }
+          }
+          //console.log('before saving fileSystem');
           await bucket.file(req.params.name).save(JSON.stringify(theStatus));
           try{
-            console.log('after save is a success');
-            res.send(theStatus);
+            //console.log('after save is a success');
+            return res.send(tabLock);
           } 
           catch (err) {
-            console.log('after save is a failure ' + err);
-            res.status(708).send(theStatus);
+            //console.log('after save is a failure ' + err);
+            return res.status(708).send({error: err, fileSystem: theStatus});
           }
 
-      } else {
+      }  else {
 
-        console.log(' error after checkData ' + theStatus);
-        res.status(909).send({
-          message: "error after checkData "
-        });
+          console.log(' error after checkData ' + theStatus);
+          res.status(909).send({
+            message: "error after checkData ", error: theStatus });
       }
     }  
     
     catch (err) {
-      // file does not exist
-      /*
-       if (inData.action==="lock"){
-            var theFileParse=[];
-            const theStatus=checkData(theFileParse, inData);
-            if (typeof theStatus === 'object'){
-                  console.log('file not found & record created');
-                  await bucket.file(req.params.name).save(JSON.stringify(theStatus));
-                  try{
-                    console.log('on Lock - after save is a success');
-                    res.send(theStatus);
-                  } 
-                  catch (err) {
-                    console.log('on Lock - after save is a failure ' + err);
-                    return res.status(708).send({
-                      message: "on Lock - after save is a failure " + err
-                    });
-                  }
-            }
-            else {
-              console.log(' error on Lock after checkData ' + theStatus);
-              return res.status(909).send({
-                message: "error on Lock after checkData " + theStatus
-              });
-            }
-
-        } else if (inData.action==="unlock"){
-          return res.status(809).send({
-            message: "on Unlock Err809 - file not found "
-          });
-                 
-        } else {
-          return res.status(819).send({
-            message: "on Unlock Err819 - file not found & action unkown = " + inData.action
-          });
-        }
-          */
           console.log('===> after updateFileSystemt() - ERROR 808 -->  '+err);
-          console.log('Should process empty file'); 
-          res.status(808).send({
-            message: "could not process updateFileSystem "
-          });
+          //console.log('Should process empty file'); 
+          res.status(808).send({ message: "could not process updateFileSystem ", error: err });
           
     }
     
   } catch (err) {
     let inData=JSON.parse(req.params.inData);
+    let tabLock=JSON.parse(req.params.tabLock);
     if (inData.action==="lock"){
       var theFileParse=[];
       const theStatus=checkData(theFileParse, inData);
       if (typeof theStatus === 'object'){
-            console.log('file not found & record created');
+            //console.log('file not found & record created');
+            
+            tabLock[inData.iWait].createdAt = theFileParse[theFileParse.length-1].createdAt;
+            tabLock[inData.iWait].updated = theFileParse[theFileParse.length-1].updatedAt;
+            tabLock[inData.iWait].lock = 1;
+  
+
             await bucket.file(req.params.name).save(JSON.stringify(theStatus));
             try{
-              console.log('on Lock - after save is a success');
-              res.send(theStatus);
+              //console.log('on Lock - after save is a success');
+              res.send(tabLock);
             } 
             catch (err) {
               console.log('on Lock - after save is a failure ' + err);
@@ -435,14 +447,15 @@ const updateFileSystem = async (req, res) => {
 };
 
 
-function checkData(fileSystem, inData){
-  console.log('start checkData');
+function checkData(fileSystem, inData, tabLock){
+  //console.log('start checkData');
   if (fileSystem.length > 0 ){
       for (var i=0; i<fileSystem.length && (fileSystem[i].object!==inData.object || fileSystem[i].bucket!==inData.bucket); i++){}
       if (inData.action==="lock"){
           if (i===fileSystem.length ){
               // record is not locked so create a new record and flag lock to true
               createRecord(fileSystem,inData);
+
               console.log('create record ' + inData.object );
               //const status=saveFile(config, fileSystem, object, bucket);
               return (fileSystem);
@@ -497,10 +510,10 @@ function createRecord(fileSystem, inData){
   fileSystem[fileSystem.length-1].lock=true;
   
   const theDate=new Date();
-  console.log('theDate=',theDate);
+  //console.log('theDate=',theDate);
   const myTime=theDate.toString().substring(16,18)+theDate.toString().substring(19,21)+theDate.toString().substring(22,24);
   const myDate=convertDate(theDate,"YYYYMMDD") + myTime;
-  console.log('created & updatedAt=' +myDate);
+  //console.log('created & updatedAt=' +myDate);
   fileSystem[fileSystem.length-1].createdAt=myDate;
   fileSystem[fileSystem.length-1].updatedAt=myDate;
 }
@@ -515,7 +528,7 @@ function validateLock(fileSystem, inData, record){
   } else { 
       stringHour = theHour.toString();
   }
-  const theMin=Number(fileSystem[record].updatedAt.substring(10,12)) + 1; // add xx minutes
+  const theMin=Number(fileSystem[record].updatedAt.substring(10,12)) + 5; // add xx minutes
   if (theMin<10){
       stringMin ='0'+ theMin.toString();
   } else { 
@@ -524,10 +537,10 @@ function validateLock(fileSystem, inData, record){
   const theTime = stringHour + stringMin + fileSystem[record].updatedAt.substring(12);
   const refDate=fileSystem[record].updatedAt.substring(0,8) + theTime;
   const theDate=new Date();
-  console.log('validateLock -> theDate=',theDate.toString());
+  //console.log('validateLock -> theDate=',theDate.toString());
   const myTime=theDate.toString().substring(16,18)+theDate.toString().substring(19,21)+theDate.toString().substring(22,24);
   const myDate = convertDate(theDate,"YYYYMMDD") + myTime;
-  console.log('validateLock -> myDate=' + myDate + ' refDate='+refDate);
+  //console.log('validateLock -> myDate=' + myDate + ' refDate='+refDate);
   if (myDate >refDate){
       fileSystem[record].createdAt=myDate;
       fileSystem[record].updatedAt=myDate;
@@ -552,12 +565,12 @@ function convertDate(theDate, theFormat) {
   var formattedDate=theFormat;
   var myDate=theDate.toString();
   const tabMonth=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-  console.log('convertDate myDate='+myDate);
+  //console.log('convertDate myDate='+myDate);
   var YY =myDate.substring(11,15);
   for (var i=0; i<tabMonth.length & tabMonth[i]!== myDate.substring(4,7); i++){};
   var MM =i+1;
   var DD =myDate.substring(8,10);
-  console.log('convertDate date= '+ YY + ' ' + MM + " " + DD);
+  //console.log('convertDate date= '+ YY + ' ' + MM + " " + DD);
   var iYear=0;
   var iMonth=0;
   var iDay=0;

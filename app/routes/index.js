@@ -15,7 +15,7 @@ let routes = (app) => {
   router.get("/rename/:projectId/:SRCname/:DESTname", controller.renameObject);
   router.get("/move/:projectId/:DESTbucket/:SRCname/:DESTname", controller.moveObject);
   router.get("/copy/:projectId/:DESTbucket/:SRCname/:DESTname", controller.copyObject);
-  router.get("/updateFileSystem/:projectId/:name/:inData", controller.updateFileSystem);
+  router.get("/updateFileSystem/:projectId/:name/:inData/:tabLock", controller.updateFileSystem);
 /*============ CONFIG  =============*/
   // Retrieve configServer file
   ////router.get("/config/:db/:collection", configs.findCollection);
