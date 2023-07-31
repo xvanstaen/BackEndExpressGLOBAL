@@ -522,13 +522,13 @@ function validateLock(fileSystem, inData, record){
   var stringHour='';
   var stringMin='';
   
-  const theHour=Number(fileSystem[record].updatedAt.substring(8,10)); // add xx hours;
+  const theHour=Number(fileSystem[record].updatedAt.substring(8,10)) + inData.timeoutFileSystem.hh; // add xx hours;
   if (theHour<10){
       stringHour ='0'+ theHour.toString();
   } else { 
       stringHour = theHour.toString();
   }
-  const theMin=Number(fileSystem[record].updatedAt.substring(10,12)) + 5; // add xx minutes
+  const theMin=Number(fileSystem[record].updatedAt.substring(10,12)) + inData.timeoutFileSystem.mn; // add xx minutes
   if (theMin<10){
       stringMin ='0'+ theMin.toString();
   } else { 
