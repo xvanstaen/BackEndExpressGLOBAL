@@ -336,7 +336,7 @@ const updateFileSystem = async (req, res) => {
               inData.updatedAt=tabLock[iWait].updatedAt;
               inData.iWait=iWait;
               
-              theStatus =checkData(theFileParse, inData);
+              theStatus =checkData(theFileParse, inData, tabLock);
               
               if (typeof theStatus === 'object'){
                 //console.log('===>onDestroy -> theStatus = ' + JSON.stringify(theStatus));
@@ -349,23 +349,29 @@ const updateFileSystem = async (req, res) => {
           //console.log('after onDestroy -> theFileParse = ' + JSON.stringify(theFileParse));
           //console.log('after onDestroy -> theStatus = ' + JSON.stringify(theStatus));
       } else {
-          theStatus=checkData( theFileParse, inData);
+          theStatus=checkData( theFileParse, inData, tabLock);
       }
-      if (typeof theStatus === 'object' || onDestroy === true){
+      if (inData.action==="check"){
+          return res.send(theStatus);
+      } else
+      if (typeof theStatus === 'object' || (onDestroy === true && theStatus!== "err-0")){
           //console.log(' status after checkData  is an object' );
           //console.log('===> after processing fileSystem - content of the file is ' + JSON.stringify(theStatus));
           if (onDestroy === false){
               for (var i=0; i<theStatus.length && (theStatus[i].object!==inData.object || theStatus[i].bucket!==inData.bucket); i++){}
               if (inData.action==="lock" && i<theStatus.length){
                 tabLock[inData.iWait].createdAt = theStatus[i].createdAt;
-                tabLock[inData.iWait].updated = theStatus[i].updatedAt;
+                tabLock[inData.iWait].updatedAt = theStatus[i].updatedAt;
                 tabLock[inData.iWait].lock = 1;
+                console.log('record ' + tabLock[inData.iWait].object + ' locked - createdAT' +  tabLock[inData.iWait].createdAt + '  updatedAt' + tabLock[inData.iWait].updatedAt);
     
               } else if (inData.action==="unlock" && i===theStatus.length){
                 tabLock[inData.iWait].lock = 0;
+                console.log('record ' + tabLock[inData.iWait].object + ' unlocked  - tabLock[inData.iWait].lock=0' );
               } else if (inData.action==="updatedAt" && i<theStatus.length){
-                tabLock[inData.iWait].updated = theStatus[i].updatedAt;
-              }
+                tabLock[inData.iWait].updatedAt = theStatus[i].updatedAt;
+                console.log('record ' + tabLock[inData.iWait].object + ' updated - createdAT' +  tabLock[inData.iWait].createdAt + '  updatedAt' + tabLock[inData.iWait].updatedAt);
+              }  
           }
           //console.log('before saving fileSystem');
           await bucket.file(req.params.name).save(JSON.stringify(theStatus));
@@ -379,15 +385,22 @@ const updateFileSystem = async (req, res) => {
           }
 
       }  else {
-
-          console.log(' error after checkData ' + theStatus);
-          res.status(909).send({
-            message: "error after checkData ", error: theStatus });
+        if (theStatus===300){
+          console.log( tabLock[inData.iWait].object + ' already locked detected after checkData ' + theStatus);
+          return res.status(300).send({
+            message: "already locked detected after checkData ", error:theStatus
+          });
+        } else {
+          console.log(tabLock[inData.iWait].object +' error on Lock after checkData ' + theStatus);
+          return res.status(909).send({
+            message: "error on Lock after checkData ", error: theStatus
+          });
+        }
       }
     }  
     
     catch (err) {
-          console.log('===> after updateFileSystemt() - ERROR 808 -->  '+err);
+          console.log(tabLock[inData.iWait].object + '===> after updateFileSystemt() - ERROR 808 -->  '+err);
           //console.log('Should process empty file'); 
           res.status(808).send({ message: "could not process updateFileSystem ", error: err });
           
@@ -403,9 +416,9 @@ const updateFileSystem = async (req, res) => {
             //console.log('file not found & record created');
             
             tabLock[inData.iWait].createdAt = theFileParse[theFileParse.length-1].createdAt;
-            tabLock[inData.iWait].updated = theFileParse[theFileParse.length-1].updatedAt;
+            tabLock[inData.iWait].updatedAt = theFileParse[theFileParse.length-1].updatedAt;
             tabLock[inData.iWait].lock = 1;
-  
+            console.log('record ' + tabLock[inData.iWait].object + ' locked - createdAT' +  tabLock[inData.iWait].createdAt + '  updatedAt' + tabLock[inData.iWait].updatedAt);
 
             await bucket.file(req.params.name).save(JSON.stringify(theStatus));
             try{
@@ -413,17 +426,25 @@ const updateFileSystem = async (req, res) => {
               res.send(tabLock);
             } 
             catch (err) {
-              console.log('on Lock - after save is a failure ' + err);
+              console.log('on Lock ' + tabLock[inData.iWait].object + ' - after save is a failure ' + err);
               return res.status(708).send({
                 message: "on Lock - after save is a failure " + err
               });
             }
       }
       else {
-        console.log(' error on Lock after checkData ' + theStatus);
-        return res.status(909).send({
-          message: "error on Lock after checkData " + theStatus
-        });
+        if (theStatus===300){
+          console.log(' already locked detected after checkData ' + theStatus);
+          return res.status(300).send({
+            message: "already locked detected after checkData " , error: theStatus
+          });
+        } else {
+          console.log(tabLock[inData.iWait].object + ' error on Lock after checkData ' + theStatus);
+          return res.status(909).send({
+            message: "error on Lock after checkData " , error: theStatus
+          });
+        }
+        
       }
 
   } else if (inData.action==="unlock"){
@@ -431,6 +452,12 @@ const updateFileSystem = async (req, res) => {
       message: "on Unlock Err809 - file not found "
     });
            
+  } else if (inData.action==="check"){
+    console.log('check file ' + tabLock[inData.iWait].object +  ' does not exist; return inData.status 800');
+    inData.createdAt='';
+    inData.modifiedAt='';
+    inData.status=800;
+    return res.send(inData);
   } else {
     return res.status(819).send({
       message: "on Unlock Err819 - file not found & action unkown = " + inData.action
@@ -469,24 +496,59 @@ function checkData(fileSystem, inData, tabLock){
           if (i===fileSystem.length ){
               // record is not found so cannot be unlocked
               console.log('record not found, so cannot be unlocked - Error 700');
-              return('err-700');
+              return(700);
           } else { // record is found; delete it
+            if (inData.createdAt === fileSystem[i].createdAt) {
               fileSystem.splice(i,1);
               return (fileSystem);
+            } else {
+              console.log('record found but createdAt is different ,  so cannot be unlocked - Error 710');
+              return(710);
+            }
           }
       } else if (inData.action==="updatedAt"){
-          return(updatedAt(fileSystem,inData,i));
+        if (inData.createdAt === fileSystem[i].createdAt) {
+              return(updatedAt(fileSystem,inData,i));
+        } else {
+          console.log('record found but createdAt is different ,  so cannot be updated - Error 720');
+              return(720);
+        }
+      } else if (inData.action==="check"){
+        if (i===fileSystem.length ){ // no record found
+            console.log('check file = no record found; return inData.status 800');
+            inData.createdAt='';
+            inData.modifiedAt='';
+            inData.status=800;
+        } else {
+          if (tabLock[inData.iWait].createdAt === fileSystem[i].createdAt && tabLock[inData.iWait].updatedAt === fileSystem[i].updatedAt){
+              inData.status=810; 
+              console.log('check file = record found and locked by same user; return inData.status 810');
+              // same user is locking the file
+          } else { 
+              inData.status=820; 
+              console.log('check file = record found and locked by another user; return inData.status 820');
+          }
+        } 
+        return(inData);
       } else {
-        console.log('wrong inData.action ==> return err-500');
-        return('err-500');} // wrong action
+        console.log('wrong inData.action ==> return err-730');
+        return(730);} // wrong action
   } else { 
       if (inData.action==="lock"){
           console.log('fileSystem is empty; createRecord');
           createRecord(fileSystem,inData);
           return (fileSystem);
-      } else { 
-          console.log('fileSystem is empty;');
-          return('err-0'); }
+      } else if (inData.action==="check"){
+            console.log('check file = fileSystem is empty; return inData.status 800');
+            inData.createdAt='';
+            inData.modifiedAt='';
+            inData.status=800;
+            return(inData);
+      } else {
+        console.log('fileSystem is empty;');
+        return('err-0'); 
+      }
+      
   }
 }
 
@@ -508,11 +570,11 @@ function createRecord(fileSystem, inData){
   fileSystem[fileSystem.length-1].object=inData.object;
   fileSystem[fileSystem.length-1].byUser=inData.user;
   fileSystem[fileSystem.length-1].lock=true;
-  
-  const theDate=new Date();
+  const aDate=new Date();
+  const theDate=aDate.toUTCString();
   //console.log('theDate=',theDate);
-  const myTime=theDate.toString().substring(16,18)+theDate.toString().substring(19,21)+theDate.toString().substring(22,24);
-  const myDate=convertDate(theDate,"YYYYMMDD") + myTime;
+  const myTime=theDate.substring(17,19)+theDate.substring(20,22)+theDate.substring(23,25);
+  const myDate=convertDate(aDate,"YYYYMMDD") + myTime;
   //console.log('created & updatedAt=' +myDate);
   fileSystem[fileSystem.length-1].createdAt=myDate;
   fileSystem[fileSystem.length-1].updatedAt=myDate;
@@ -521,27 +583,47 @@ function createRecord(fileSystem, inData){
 function validateLock(fileSystem, inData, record){
   var stringHour='';
   var stringMin='';
+  var stringDay='';
+  var stringMonth='';
+  var addDay=0;
+  var addHour=0;
   
-  const theHour=Number(fileSystem[record].updatedAt.substring(8,10)) + inData.timeoutFileSystem.hh; // add xx hours;
-  if (theHour<10){
-      stringHour ='0'+ theHour.toString();
-  } else { 
-      stringHour = theHour.toString();
+  var theMin=Number(fileSystem[record].updatedAt.substring(10,12)) + Number(inData.timeoutFileSystem.mn); // add xx minutes
+  if (Math.trunc(theMin / 60) > 0){
+    addHour =  Math.trunc(theMin / 60);
+    theMin= theMin % 60;
   }
-  const theMin=Number(fileSystem[record].updatedAt.substring(10,12)) + inData.timeoutFileSystem.mn; // add xx minutes
   if (theMin<10){
       stringMin ='0'+ theMin.toString();
   } else { 
       stringMin = theMin.toString();
   }
+  var theHour=Number(fileSystem[record].updatedAt.substring(8,10)) + Number(inData.timeoutFileSystem.hh) + addHour; // add xx hours;
+  if (Math.trunc(theHour / 24) > 0){
+    addDay =  Math.trunc(theHour / 24);
+    theHour= theHour % 24;
+  }
+  if (theHour<10){
+      stringHour ='0'+ theHour.toString();
+  } else { 
+      stringHour = theHour.toString();
+  }
+
   const theTime = stringHour + stringMin + fileSystem[record].updatedAt.substring(12);
-  const refDate=fileSystem[record].updatedAt.substring(0,8) + theTime;
-  const theDate=new Date();
-  //console.log('validateLock -> theDate=',theDate.toString());
-  const myTime=theDate.toString().substring(16,18)+theDate.toString().substring(19,21)+theDate.toString().substring(22,24);
-  const myDate = convertDate(theDate,"YYYYMMDD") + myTime;
+  const theDay = Number(fileSystem[record].updatedAt.substring(6,8)) + addDay;
+  if (theDay < 10){
+    stringDay = "0" + theDay;
+  } else {
+    stringDay = theDay;
+  }
+  const refDate=fileSystem[record].updatedAt.substring(0,6) + stringDay + theTime;
+
+  const aDate = new Date();
+  const theDate = aDate.toUTCString();
+  const myTime = theDate.substring(17,19)+theDate.substring(20,22)+theDate.substring(23,25);
+  const myDate = convertDate(aDate,"YYYYMMDD") + myTime;
   //console.log('validateLock -> myDate=' + myDate + ' refDate='+refDate);
-  if (myDate >refDate){
+  if (Number(myDate) > Number(refDate)){
       fileSystem[record].createdAt=myDate;
       fileSystem[record].updatedAt=myDate;
       fileSystem[record].bucket=inData.bucket;
@@ -554,23 +636,30 @@ function validateLock(fileSystem, inData, record){
 }
 
 function updatedAt(fileSystem){
-  const theDate=new Date();
-  const myTime=theDate.toString().substring(16,18)+theDate.toString().substring(19,21)+theDate.toString().substring(22,24);
-  const myDate=convertDate(theDate,"YYYYMMDD") + myTime;
+  const aDate=new Date();
+  const theDate=aDate.toUTCString();
+  const myTime=theDate.substring(17,19)+theDate.substring(20,22)+theDate.substring(23,25);
+  const myDate=convertDate(aDate,"YYYYMMDD") + myTime;
   fileSystem[fileSystem.length-1].updatedAt=myDate;
   return(fileSystem);
 }
 
 function convertDate(theDate, theFormat) {
   var formattedDate=theFormat;
-  var myDate=theDate.toString();
-  const tabMonth=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  //const myDate=new Date();
+  //var myUTCDate=theDate.toUTCString();
+  //const tabMonth=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
   //console.log('convertDate myDate='+myDate);
-  var YY =myDate.substring(11,15);
-  for (var i=0; i<tabMonth.length & tabMonth[i]!== myDate.substring(4,7); i++){};
-  var MM =i+1;
-  var DD =myDate.substring(8,10);
+  //var YY =myDate.substring(11,15);
+  //for (var i=0; i<tabMonth.length & tabMonth[i]!== myDate.substring(4,7); i++){};
+  //var MM =i+1;
+  //var DD =myDate.substring(8,10);
+ 
+  var YY =theDate.getUTCFullYear();
+  var MM =theDate.getUTCMonth() + 1;
+  var DD =theDate.getUTCDate();
   //console.log('convertDate date= '+ YY + ' ' + MM + " " + DD);
+  
   var iYear=0;
   var iMonth=0;
   var iDay=0;
