@@ -324,6 +324,7 @@ const updateFileSystem = async (req, res) => {
       //console.log('theFileParse=',theFileParse);
       if (inData.action==='onDestroy'){
         onDestroy=true;
+        var nbCheckStatus=0;
         for (var iWait=0; iWait<tabLock.length; iWait++){
           
             if (tabLock[iWait].lock===1){
@@ -337,13 +338,16 @@ const updateFileSystem = async (req, res) => {
               inData.iWait=iWait;
               
               theStatus =checkData(theFileParse, inData, tabLock);
-              
+              nbCheckStatus++
               if (typeof theStatus === 'object'){
                 //console.log('===>onDestroy -> theStatus = ' + JSON.stringify(theStatus));
                 
                 theFileParse = theStatus;
               } else {console.log('===>onDestroy -> theStatus = ' + theStatus) }
             }
+          }
+          if (nbCheckStatus===0){
+            return res.send({message: 'onDestroy process; no record was deleted', err: 840})
           }
           theStatus=theFileParse;
           //console.log('after onDestroy -> theFileParse = ' + JSON.stringify(theFileParse));
