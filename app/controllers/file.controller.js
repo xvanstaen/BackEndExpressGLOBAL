@@ -20,6 +20,7 @@ const { MAX_RETRY_DEFAULT } = require("@google-cloud/storage/build/src/storage")
 //const storage = new Storage({ keyFilename: "google-cloud-key.json" });
 const storage = new Storage();
 var bucket = storage.bucket("xmv_messages");
+var bucketFileSystem = storage.bucket("config-xmvit");
 
 
 async function  enableUniformBucketLevelAccess(bucketName) {
@@ -303,50 +304,63 @@ const updateFileSystem = async (req, res) => {
       cacheControl: 'public,max-age=0,no-cache,no-store',
       contentType: 'application/json'
     };
-    if (req.query.bucket!==''){
-      bucket = storage.bucket(req.query.bucket);
-      bucket.projectId=req.params.projectId;
-      enableUniformBucketLevelAccess(req.query.bucket);
-    } 
+    bucketFileSystem = storage.bucket(req.query.bucket);
+    bucketFileSystem.projectId=req.params.projectId;
+    bucketFileSystem.id=req.query.bucket;
+    bucketFileSystem.name=req.query.bucket;
+    // enableUniformBucketLevelAccess(req.query.bucket);
+
     let tabLock=JSON.parse(req.params.tabLock);
-    //console.log('req.params.tabLock=',req.params.tabLock);
-    //console.log('tabLock=',tabLock);
-    //console.log('req.params.inData=',req.params.inData);
+
     let inData=JSON.parse(req.params.inData);
 
-    //console.log('req.params.inData='+inData.action+' '+inData.createdAt);
-    await bucket.file(req.params.name).setMetadata(newMetadata);
-    const [fileData] = await bucket.file(req.params.name).download();
+
+    // await bucketFileSystem.file(req.params.name).setMetadata(newMetadata);
+    
+    const [fileData] = await bucketFileSystem.file(req.params.name).download();
     try{
+      if ( bucketFileSystem.id !== req.query.bucket){
+        console.log('wrong Bucket has been accessed' + bucketFileSystem.id + '   tabLock[0].action=' + tabLock[0].action);
+        return res.send({message: 'wrong Bucket has been accessed' + '  tabLock[0].action=' + tabLock[0].action, err: 888})
+      }
       var theStatus = [];
       var onDestroy=false;
       let theFileParse=JSON.parse(fileData);
       //console.log('theFileParse=',theFileParse);
-      if (inData.action==='onDestroy'){
+      if (inData.action==='onDestroy'  ){
+        
         onDestroy=true;
         var nbCheckStatus=0;
-        for (var iWait=0; iWait<tabLock.length; iWait++){
-          
-            if (tabLock[iWait].lock===1){
-              
-              inData.action='unlock';
-              inData.bucket=tabLock[iWait].bucket;
-              inData.object=tabLock[iWait].object;
-              inData.user=tabLock[iWait].user;
-              inData.createdAt=tabLock[iWait].createdAt;
-              inData.updatedAt=tabLock[iWait].updatedAt;
-              inData.iWait=iWait;
-              
-              theStatus =checkData(theFileParse, inData, tabLock);
-              nbCheckStatus++
-              if (typeof theStatus === 'object'){
-                //console.log('===>onDestroy -> theStatus = ' + JSON.stringify(theStatus));
+        if (theFileParse.length>0){
+
+       
+          for (var iWait=0; iWait<tabLock.length; iWait++){
+            
+              if (tabLock[iWait].lock===1){
+                console.log('onDestroy - bucket=' + tabLock[iWait].bucket + '  object=' + tabLock[iWait].object);
+                inData.action='unlock';
+                inData.bucket=tabLock[iWait].bucket;
+                inData.object=tabLock[iWait].object;
+                inData.user=tabLock[iWait].user;
+                inData.createdAt=tabLock[iWait].createdAt;
+                inData.updatedAt=tabLock[iWait].updatedAt;
+                inData.iWait=iWait;
+                inData.IpAddress=tabLock[iWait].IpAddress;
                 
-                theFileParse = theStatus;
-              } else {console.log('===>onDestroy -> theStatus = ' + theStatus) }
+                theStatus =checkData(theFileParse, inData, tabLock);
+               
+                if (typeof theStatus === 'object'){
+                  console.log('===>onDestroy -> theStatus = object ' + inData.object +  ' in bucket ' + inData.bucket + ' has been removed');
+                  nbCheckStatus++
+                  theFileParse = theStatus;
+                } else {
+                  console.log('===>onDestroy -> theStatus = ' + theStatus) ;
+                }
+              }
             }
           }
           if (nbCheckStatus===0){
+            console.log('onDestroy process; no record was deleted - object ' + inData.object +  ' in bucket ' + inData.bucket);
             return res.send({message: 'onDestroy process; no record was deleted', err: 840})
           }
           theStatus=theFileParse;
@@ -355,55 +369,68 @@ const updateFileSystem = async (req, res) => {
       } else {
           theStatus=checkData( theFileParse, inData, tabLock);
       }
-      if (inData.action==="check"){
+      if (inData.action==="check" || inData.action==="check&update" && typeof theStatus !== 'object'){
           return res.send(theStatus);
-      } else
-      if (typeof theStatus === 'object' || (onDestroy === true && theStatus!== "err-0")){
-          //console.log(' status after checkData  is an object' );
-          //console.log('===> after processing fileSystem - content of the file is ' + JSON.stringify(theStatus));
-          if (onDestroy === false){
-              for (var i=0; i<theStatus.length && (theStatus[i].object!==inData.object || theStatus[i].bucket!==inData.bucket); i++){}
-              if (inData.action==="lock" && i<theStatus.length){
-                tabLock[inData.iWait].createdAt = theStatus[i].createdAt;
-                tabLock[inData.iWait].updatedAt = theStatus[i].updatedAt;
-                tabLock[inData.iWait].lock = 1;
-                console.log('record ' + tabLock[inData.iWait].object + ' locked - createdAT' +  tabLock[inData.iWait].createdAt + '  updatedAt' + tabLock[inData.iWait].updatedAt);
-    
-              } else if (inData.action==="unlock" && i===theStatus.length){
-                tabLock[inData.iWait].lock = 0;
-                console.log('record ' + tabLock[inData.iWait].object + ' unlocked  - tabLock[inData.iWait].lock=0' );
-              } else if (inData.action==="updatedAt" && i<theStatus.length){
-                tabLock[inData.iWait].updatedAt = theStatus[i].updatedAt;
-                console.log('record ' + tabLock[inData.iWait].object + ' updated - createdAT' +  tabLock[inData.iWait].createdAt + '  updatedAt' + tabLock[inData.iWait].updatedAt);
-              }  
-          }
-          //console.log('before saving fileSystem');
-          await bucket.file(req.params.name).save(JSON.stringify(theStatus));
-          try{
-            //console.log('after save is a success');
-            return res.send(tabLock);
-          } 
-          catch (err) {
-            //console.log('after save is a failure ' + err);
-            return res.status(708).send({error: err, fileSystem: theStatus});
-          }
+      } else if (typeof theStatus === 'object' || onDestroy === true ){
+            //console.log(' status after checkData  is an object' );
+            //console.log('===> after processing fileSystem - content of the file is ' + JSON.stringify(theStatus));
+            if (onDestroy === false){
+                for (var i=0; i<theStatus.length && (theStatus[i].object!==inData.object || theStatus[i].bucket!==inData.bucket); i++){}
+                if (inData.action==="lock" && i<theStatus.length){
+                  tabLock[inData.iWait].createdAt = theStatus[i].createdAt;
+                  tabLock[inData.iWait].updatedAt = theStatus[i].updatedAt;
+                  tabLock[inData.iWait].lock = 1;
+                  console.log('record ' + tabLock[inData.iWait].object + ' locked - createdAT' +  tabLock[inData.iWait].createdAt + '  updatedAt' + tabLock[inData.iWait].updatedAt);
+      
+                } else if (inData.action==="unlock" && i===theStatus.length){
+                  tabLock[inData.iWait].lock = 0;
+                  console.log('record ' + tabLock[inData.iWait].object + ' unlocked  - tabLock[inData.iWait].lock=0' );
+                } else if ((inData.action==="updatedAt" || inData.action==="check&update") && i<theStatus.length){
+                  tabLock[inData.iWait].updatedAt = theStatus[i].updatedAt;
+                  tabLock[inData.iWait].createdAt = theStatus[i].createdAt;
+                  console.log('record ' + tabLock[inData.iWait].object + ' updated - createdAT' +  tabLock[inData.iWait].createdAt + '  updatedAt' + tabLock[inData.iWait].updatedAt);
+                }  
+            }
+            //console.log('update Metadata');
+            //await bucketFileSystem.file(req.params.name).setMetadata(newMetadata);
+            
+            //try{
+              //console.log('after save is a success');
+              if (Array.isArray(theStatus)===false){
+                console.log('fileSystem record is not an array - file is saved as empty');
+                theStatus=[];
+              }
+              await bucketFileSystem.file(req.params.name).save(JSON.stringify(theStatus));
+              try{
+                  return res.send(tabLock);
+              }
+              catch (err) {
+                //console.log('after save is a failure ' + err);
+                return res.status(708).send({error: err, fileSystem: theStatus});
+              }
+            //} 
+            //catch (err) {
+              //console.log('after save is a failure ' + err);
+            //  return res.status(708).send({error: err, fileSystem: theStatus});
+            //}
 
-      }  else {
-        if (theStatus===300){
-          console.log( tabLock[inData.iWait].object + ' already locked detected after checkData ' + theStatus);
-          return res.status(300).send({
-            message: "already locked detected after checkData ", error:theStatus
-          });
-        } else {
-          console.log(tabLock[inData.iWait].object +' error on Lock after checkData ' + theStatus);
-          return res.status(909).send({
-            message: "error on Lock after checkData ", error: theStatus
-          });
+        }  else {
+          if (theStatus===300){
+            console.log( tabLock[inData.iWait].object + ' already locked detected after checkData ' + theStatus);
+            return res.status(300).send({
+              message: "already locked detected after checkData ", error:theStatus
+            });
+          } else {
+            console.log(tabLock[inData.iWait].object +' error on Lock after checkData ' + theStatus);
+            return res.status(909).send({
+              message: "error on Lock after checkData ", error: theStatus
+            });
+          }
         }
-      }
     }  
     
     catch (err) {
+         
           console.log(tabLock[inData.iWait].object + '===> after updateFileSystemt() - ERROR 808 -->  '+err);
           //console.log('Should process empty file'); 
           res.status(808).send({ message: "could not process updateFileSystem ", error: err });
@@ -413,7 +440,7 @@ const updateFileSystem = async (req, res) => {
   } catch (err) {
     let inData=JSON.parse(req.params.inData);
     let tabLock=JSON.parse(req.params.tabLock);
-    if (inData.action==="lock"){
+    if (inData.action==="lock"  || inData.action==="check&update"){
       var theFileParse=[];
       const theStatus=checkData(theFileParse, inData);
       if (typeof theStatus === 'object'){
@@ -424,7 +451,7 @@ const updateFileSystem = async (req, res) => {
             tabLock[inData.iWait].lock = 1;
             console.log('record ' + tabLock[inData.iWait].object + ' locked - createdAT' +  tabLock[inData.iWait].createdAt + '  updatedAt' + tabLock[inData.iWait].updatedAt);
 
-            await bucket.file(req.params.name).save(JSON.stringify(theStatus));
+            await bucketFileSystem.file(req.params.name).save(JSON.stringify(theStatus));
             try{
               //console.log('on Lock - after save is a success');
               res.send(tabLock);
@@ -456,7 +483,7 @@ const updateFileSystem = async (req, res) => {
       message: "on Unlock Err809 - file not found "
     });
            
-  } else if (inData.action==="check"){
+  } else if (inData.action==="check" || inData.action==="updatedAt" ){
     console.log('check file ' + tabLock[inData.iWait].object +  ' does not exist; return inData.status 800');
     inData.createdAt='';
     inData.modifiedAt='';
@@ -483,7 +510,7 @@ function checkData(fileSystem, inData, tabLock){
   if (fileSystem.length > 0 ){
       for (var i=0; i<fileSystem.length && (fileSystem[i].object!==inData.object || fileSystem[i].bucket!==inData.bucket); i++){}
       if (inData.action==="lock"){
-          if (i===fileSystem.length ){
+          if (i===fileSystem. length ){
               // record is not locked so create a new record and flag lock to true
               createRecord(fileSystem,inData);
 
@@ -517,17 +544,27 @@ function checkData(fileSystem, inData, tabLock){
           console.log('record found but createdAt is different ,  so cannot be updated - Error 720');
               return(720);
         }
-      } else if (inData.action==="check"){
+      } else if (inData.action==="check" || inData.action==="check&update"){
         if (i===fileSystem.length ){ // no record found
-            console.log('check file = no record found; return inData.status 800');
-            inData.createdAt='';
-            inData.modifiedAt='';
-            inData.status=800;
+            if (inData.action==="check"){
+              console.log('check file = no record found; return inData.status 800');
+              inData.createdAt='';
+              inData.modifiedAt='';
+              inData.status=800;
+            } else {
+              createRecord(fileSystem,inData);
+              return (fileSystem);
+            }
+            
         } else {
           if (tabLock[inData.iWait].createdAt === fileSystem[i].createdAt && tabLock[inData.iWait].updatedAt === fileSystem[i].updatedAt){
-              inData.status=810; 
-              console.log('check file = record found and locked by same user; return inData.status 810');
+            if (inData.action==="check"){  
+                inData.status=810; 
+                  console.log('check file = record found and locked by same user; return inData.status 810');
               // same user is locking the file
+            } else {
+              return(updatedAt(fileSystem,inData,i));
+            }
           } else { 
               inData.status=820; 
               console.log('check file = record found and locked by another user; return inData.status 820');
@@ -542,12 +579,17 @@ function checkData(fileSystem, inData, tabLock){
           console.log('fileSystem is empty; createRecord');
           createRecord(fileSystem,inData);
           return (fileSystem);
-      } else if (inData.action==="check"){
+      } else if (inData.action==="check"  || inData.action==="check&update"){
+          if (inData.action==="check"){
             console.log('check file = fileSystem is empty; return inData.status 800');
             inData.createdAt='';
             inData.modifiedAt='';
             inData.status=800;
             return(inData);
+          } else {
+            createRecord(fileSystem,inData);
+            return (fileSystem);
+          }
       } else {
         console.log('fileSystem is empty;');
         return('err-0'); 
@@ -563,6 +605,7 @@ function createRecord(fileSystem, inData){
     bucket:string='', 
     object:string='',
     user:string="",
+    IpAddress:string="",
     iWait:number=0,
     status:number=0,
     lock:number=0,
@@ -573,6 +616,7 @@ function createRecord(fileSystem, inData){
   fileSystem[fileSystem.length-1].bucket=inData.bucket;
   fileSystem[fileSystem.length-1].object=inData.object;
   fileSystem[fileSystem.length-1].byUser=inData.user;
+  fileSystem[fileSystem.length-1].IpAddress=inData.IpAddress;
   fileSystem[fileSystem.length-1].lock=true;
   const aDate=new Date();
   const theDate=aDate.toUTCString();
@@ -633,18 +677,19 @@ function validateLock(fileSystem, inData, record){
       fileSystem[record].bucket=inData.bucket;
       fileSystem[record].object=inData.object;
       fileSystem[record].byUser=inData.user;
+      fileSystem[fileSystem.length-1].IpAddress=inData.IpAddress;
       return(fileSystem);
   } else {
       return(300);
   }
 }
 
-function updatedAt(fileSystem){
+function updatedAt(fileSystem,inData,iRecord){
   const aDate=new Date();
   const theDate=aDate.toUTCString();
   const myTime=theDate.substring(17,19)+theDate.substring(20,22)+theDate.substring(23,25);
   const myDate=convertDate(aDate,"YYYYMMDD") + myTime;
-  fileSystem[fileSystem.length-1].updatedAt=myDate;
+  fileSystem[iRecord].updatedAt=myDate;
   return(fileSystem);
 }
 
