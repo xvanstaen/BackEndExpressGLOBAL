@@ -313,9 +313,6 @@ const updateFileSystem = async (req, res) => {
     let tabLock=JSON.parse(req.params.tabLock);
 
     let inData=JSON.parse(req.params.inData);
-
-
-    // await bucketFileSystem.file(req.params.name).setMetadata(newMetadata);
     
     const [fileData] = await bucketFileSystem.file(req.params.name).download();
     try{
@@ -369,8 +366,27 @@ const updateFileSystem = async (req, res) => {
       } else {
           theStatus=checkData( theFileParse, inData, tabLock);
       }
-      if (inData.action==="check" || inData.action==="check&update" && typeof theStatus !== 'object'){
-          return res.send(theStatus);
+      //if ((inData.action==="check" || inData.action==="check&update") &&  Array.isArray(theStatus)===false){
+      //    return res.send(theStatus);
+      //} else 
+      if (Array.isArray(theStatus)===false){
+          console.log("this is not a file system record; return the error code or inData object ");
+          if (typeof theStatus !== object){
+              if (theStatus===300){
+                console.log( tabLock[inData.iWait].object + ' ==> already locked ; status= ' + theStatus);
+                return res.status(300).send({
+                  message: "already locked detected after checkData ", error:theStatus
+                });
+              } else {
+                console.log(tabLock[inData.iWait].object +' error on Lock after checkData ' + theStatus);
+                return res.status(909).send({
+                  message: "error on Lock after checkData ", error: theStatus
+                });
+              }
+          } else {
+              return res.send(theStatus);
+          }
+
       } else if (typeof theStatus === 'object' || onDestroy === true ){
             //console.log(' status after checkData  is an object' );
             //console.log('===> after processing fileSystem - content of the file is ' + JSON.stringify(theStatus));
@@ -396,12 +412,14 @@ const updateFileSystem = async (req, res) => {
             
             //try{
               //console.log('after save is a success');
-              if (Array.isArray(theStatus)===false){
-                console.log('fileSystem record is not an array - file is saved as empty');
-                theStatus=[];
-              }
+
               await bucketFileSystem.file(req.params.name).save(JSON.stringify(theStatus));
               try{
+                  const newMetadata = {
+                  cacheControl: 'public,max-age=0,no-cache,no-store',
+                  contentType: 'application/json'
+                };
+                await bucketFileSystem.file(req.params.name).setMetadata(newMetadata);
                   return res.send(tabLock);
               }
               catch (err) {
@@ -414,26 +432,14 @@ const updateFileSystem = async (req, res) => {
             //  return res.status(708).send({error: err, fileSystem: theStatus});
             //}
 
-        }  else {
-          if (theStatus===300){
-            console.log( tabLock[inData.iWait].object + ' already locked detected after checkData ' + theStatus);
-            return res.status(300).send({
-              message: "already locked detected after checkData ", error:theStatus
-            });
-          } else {
-            console.log(tabLock[inData.iWait].object +' error on Lock after checkData ' + theStatus);
-            return res.status(909).send({
-              message: "error on Lock after checkData ", error: theStatus
-            });
-          }
-        }
+        }  
     }  
     
     catch (err) {
          
           console.log(tabLock[inData.iWait].object + '===> after updateFileSystemt() - ERROR 808 -->  '+err);
           //console.log('Should process empty file'); 
-          res.status(808).send({ message: "could not process updateFileSystem ", error: err });
+          return res.status(808).send({ message: "could not process updateFileSystem ", error: err });
           
     }
     
@@ -454,46 +460,51 @@ const updateFileSystem = async (req, res) => {
             await bucketFileSystem.file(req.params.name).save(JSON.stringify(theStatus));
             try{
               //console.log('on Lock - after save is a success');
-              res.send(tabLock);
+              const newMetadata = {
+                cacheControl: 'public,max-age=0,no-cache,no-store',
+                contentType: 'application/json'
+              };
+              await bucketFileSystem.file(req.params.name).setMetadata(newMetadata);
+              return res.send(tabLock);
             } 
             catch (err) {
               console.log('on Lock ' + tabLock[inData.iWait].object + ' - after save is a failure ' + err);
               return res.status(708).send({
                 message: "on Lock - after save is a failure " + err
-              });
+                  });
             }
       }
       else {
         if (theStatus===300){
-          console.log(' already locked detected after checkData ' + theStatus);
+          console.log(' file empty however already locked detected after checkData ?? status=' + theStatus);
           return res.status(300).send({
-            message: "already locked detected after checkData " , error: theStatus
-          });
+            message: " file empty however already locked detected after checkData " , error: theStatus
+              });
         } else {
-          console.log(tabLock[inData.iWait].object + ' error on Lock after checkData ' + theStatus);
+          console.log(tabLock[inData.iWait].object + 'file empty however  error on Lock after checkData?? status= ' + theStatus);
           return res.status(909).send({
-            message: "error on Lock after checkData " , error: theStatus
-          });
+            message: " file empty however error on Lock after checkData " , error: theStatus
+              });
         }
         
       }
 
-  } else if (inData.action==="unlock"){
-    return res.status(809).send({
-      message: "on Unlock Err809 - file not found "
-    });
-           
-  } else if (inData.action==="check" || inData.action==="updatedAt" ){
-    console.log('check file ' + tabLock[inData.iWait].object +  ' does not exist; return inData.status 800');
-    inData.createdAt='';
-    inData.modifiedAt='';
-    inData.status=800;
-    return res.send(inData);
-  } else {
-    return res.status(819).send({
-      message: "on Unlock Err819 - file not found & action unkown = " + inData.action
-    });
-  }
+    } else if (inData.action==="unlock"){
+      return res.status(809).send({
+        message: "on Unlock Err809 - file not found "
+          });
+            
+    } else if (inData.action==="check" || inData.action==="updatedAt" ){
+      console.log('check file ' + tabLock[inData.iWait].object +  ' does not exist; return inData.status 800');
+      inData.createdAt='';
+      inData.modifiedAt='';
+      inData.status=800;
+      return res.send(inData);
+    } else {
+      return res.status(819).send({
+        message: "on Unlock Err819 - file not found & action unkown = " + inData.action
+          });
+    }
   /*
     console.log("updateFileSystem - Could not get the file. 408 " + err);
     res.status(408).send({
@@ -501,7 +512,7 @@ const updateFileSystem = async (req, res) => {
     });
   }
   */
-}
+  }
 };
 
 
@@ -518,7 +529,7 @@ function checkData(fileSystem, inData, tabLock){
               //const status=saveFile(config, fileSystem, object, bucket);
               return (fileSystem);
           } else { // record already exists and already locked
-              console.log('record ' + inData.object + 'already exists and already locked - Error 300');
+              console.log('record ' + inData.object + ' already exists and is locked - Error 300');
               // check wheter it has been locked form more than 1 hour
               // if yes then lock it for this user
               return(validateLock(fileSystem,inData,i));
