@@ -299,6 +299,348 @@ const deleteObject = async (req, res) => {
 
 const updateFileSystem = async (req, res) => {
   try {
+      console.log('===> in updateFileSystem()');
+      const newMetadata = {
+        cacheControl: 'public,max-age=0,no-cache,no-store',
+        contentType: 'application/json'
+      };
+      bucketFileSystem = storage.bucket(req.query.bucket);
+      bucketFileSystem.projectId=req.params.projectId;
+      bucketFileSystem.id=req.query.bucket;
+      bucketFileSystem.name=req.query.bucket;
+      // enableUniformBucketLevelAccess(req.query.bucket);
+
+      let tabLock=JSON.parse(req.params.tabLock);
+      //console.log(req.params.tabLock);
+
+      if ( bucketFileSystem.id !== req.query.bucket){
+          console.log('wrong Bucket has been accessed' + bucketFileSystem.id + '   tabLock[0].action=' + tabLock[0].action);
+          return res.send({message: 'wrong Bucket has been accessed' + '  tabLock[0].action=' + tabLock[0].action, err: 888})
+        }
+      var theStatus = [];
+      var onDestroy=false;
+        
+        //console.log('theFileParse=',theFileParse);
+      if (tabLock[0].action==='onDestroy'  ){
+          
+        onDestroy=true;
+        var nbCheckStatus=0;
+
+
+        for (var iWait=0; iWait<tabLock.length; iWait++){
+              
+          if (tabLock[iWait].lock===1){
+              console.log('onDestroy - bucket=' + tabLock[iWait].bucket + '  object=' + tabLock[iWait].object + ' file system=' + tabLock[iWait].objectName);
+              tabLock[iWait].action='unlock';
+              const [fileData] = await bucketFileSystem.file(tabLock[iWait].objectName).download();
+                  
+              theStatus =checkDataOnDestroy(JSON.parse(fileData), tabLock[iWait]);
+              if (typeof theStatus === 'object'){
+                  await bucketFileSystem.file(tabLock[iWait].objectName).save(JSON.stringify(theStatus));
+                  try{
+                    const newMetadata = {
+                      cacheControl: 'public,max-age=0,no-cache,no-store',
+                      contentType: 'application/json'
+                    };
+                      await bucketFileSystem.file(tabLock[iWait].objectName).setMetadata(newMetadata);
+                      
+                    }
+                  catch (err) {
+                        console.log('after save is a failure ' + err);
+                      
+                    }
+              }
+          }
+        }
+        return res.send(900);
+      } else {
+        return res.send({message:"wrong action ; onDestroy was expected", error:998});
+      }
+    }
+  catch (err) {
+    console.log('global failure ' + err);
+    return res.send({message:"global failure", error:999});
+     
+  } 
+   
+};
+
+
+function checkDataOnDestroy(fileSystem, tabLock){
+  if (fileSystem.length > 0 ){
+    for (var i=0; i<fileSystem.length && (fileSystem[i].object!==tabLock.object || fileSystem[i].bucket!==tabLock.bucket); i++){}
+    if (i===fileSystem.length ){
+      // record is not found so cannot be unlocked
+      console.log('record not found, so cannot be unlocked - Error 700');
+      return (700);
+  } else { // record is found; delete it
+    if (tabLock.createdAt === fileSystem[i].createdAt) {
+      fileSystem.splice(i,1);
+      return (fileSystem);
+    } else {
+      console.log('record found but createdAt is different ,  so cannot be unlocked - Error 710');
+      return (710);
+    }
+  }
+  } else {
+      return (700);
+    }
+}
+
+function checkData(fileSystem, inData, tabLock){
+  //console.log('start checkData');
+  if (fileSystem.length > 0 ){
+      for (var i=0; i<fileSystem.length && (fileSystem[i].object!==inData.object || fileSystem[i].bucket!==inData.bucket); i++){}
+      if (inData.action==="lock"){
+          if (i===fileSystem. length ){
+              // record is not locked so create a new record and flag lock to true
+              createRecord(fileSystem,inData);
+
+              console.log('create record ' + inData.object );
+              //const status=saveFile(config, fileSystem, object, bucket);
+              return (fileSystem);
+          } else { // record already exists and already locked
+              console.log('record ' + inData.object + ' already exists and is locked - Error 300');
+              // check wheter it has been locked form more than 1 hour
+              // if yes then lock it for this user
+              return(validateLock(fileSystem,inData,i));
+          }
+      } else if (inData.action==="unlock"){
+          if (i===fileSystem.length ){
+              // record is not found so cannot be unlocked
+              console.log('record not found, so cannot be unlocked - Error 700');
+              return(700);
+          } else { // record is found; delete it
+            if (inData.createdAt === fileSystem[i].createdAt) {
+              fileSystem.splice(i,1);
+              return (fileSystem);
+            } else {
+              console.log('record found but createdAt is different ,  so cannot be unlocked - Error 710');
+              return(710);
+            }
+          }
+      } else if (inData.action==="updatedAt"){
+        if (inData.createdAt === fileSystem[i].createdAt) {
+              return(updatedAt(fileSystem,inData,i));
+        } else {
+          console.log('record found but createdAt is different ,  so cannot be updated - Error 720');
+              return(720);
+        }
+      } else if (inData.action==="check" || inData.action==="check&update"){
+        if (i===fileSystem.length ){ // no record found
+            if (inData.action==="check"){
+              console.log('check file = no record found; return inData.status 800');
+              inData.createdAt='';
+              inData.updatedAt='';
+              inData.status=800;
+            } else {
+              createRecord(fileSystem,inData);
+              return (fileSystem);
+            }
+            
+        } else {
+          if (tabLock[inData.iWait].createdAt === fileSystem[i].createdAt && tabLock[inData.iWait].updatedAt === fileSystem[i].updatedAt){
+            if (inData.action==="check"){  
+                inData.status=810; 
+                  console.log('check file = record found and locked by same user; return inData.status 810');
+              // same user is locking the file
+            } else {
+              return(updatedAt(fileSystem,inData,i));
+            }
+          } else { 
+              inData.status=820; 
+              console.log('check file = record found and locked by another user; return inData.status 820');
+          }
+        } 
+        return(inData);
+      } else {
+        console.log('wrong inData.action ==> return err-730');
+        return(730);} // wrong action
+  } else { 
+      if (inData.action==="lock"){
+          console.log('fileSystem is empty; createRecord');
+          createRecord(fileSystem,inData);
+          return (fileSystem);
+      } else if (inData.action==="check"  || inData.action==="check&update"){
+          if (inData.action==="check"){
+            console.log('check file = fileSystem is empty; return inData.status 800');
+            inData.createdAt='';
+            inData.updatedAt='';
+            inData.status=800;
+            return(inData);
+          } else {
+            createRecord(fileSystem,inData);
+            return (fileSystem);
+          }
+      } else {
+        console.log('fileSystem is empty;');
+        return('err-0'); 
+      }
+      
+  }
+}
+
+function createRecord(fileSystem, inData){
+
+  const recordSystem={
+    action:string="",// 'lock' or 'unlock'
+    bucket:string='', 
+    object:string='',
+    user:string="",
+    IpAddress:string="",
+    iWait:number=0,
+    status:number=0,
+    lock:number=0,
+    createdAt:string="",
+    updatedAt:string="" }
+
+  fileSystem.push(recordSystem);
+  fileSystem[fileSystem.length-1].bucket=inData.bucket;
+  fileSystem[fileSystem.length-1].object=inData.object;
+  fileSystem[fileSystem.length-1].byUser=inData.user;
+  fileSystem[fileSystem.length-1].IpAddress=inData.IpAddress;
+  fileSystem[fileSystem.length-1].lock=true;
+  const aDate=new Date();
+  const theDate=aDate.toUTCString();
+  //console.log('theDate=',theDate);
+  const myTime=theDate.substring(17,19)+theDate.substring(20,22)+theDate.substring(23,25);
+  const myDate=convertDate(aDate,"YYYYMMDD") + myTime;
+  //console.log('created & updatedAt=' +myDate);
+  fileSystem[fileSystem.length-1].createdAt=myDate;
+  fileSystem[fileSystem.length-1].updatedAt=myDate;
+}
+
+function validateLock(fileSystem, inData, record){
+  var stringHour='';
+  var stringMin='';
+  var stringDay='';
+  var stringMonth='';
+  var addDay=0;
+  var addHour=0;
+  
+  var theMin=Number(fileSystem[record].updatedAt.substring(10,12)) + Number(inData.timeoutFileSystem.mn); // add xx minutes
+  if (Math.trunc(theMin / 60) > 0){
+    addHour =  Math.trunc(theMin / 60);
+    theMin= theMin % 60;
+  }
+  if (theMin<10){
+      stringMin ='0'+ theMin.toString();
+  } else { 
+      stringMin = theMin.toString();
+  }
+  var theHour=Number(fileSystem[record].updatedAt.substring(8,10)) + Number(inData.timeoutFileSystem.hh) + addHour; // add xx hours;
+  if (Math.trunc(theHour / 24) > 0){
+    addDay =  Math.trunc(theHour / 24);
+    theHour= theHour % 24;
+  }
+  if (theHour<10){
+      stringHour ='0'+ theHour.toString();
+  } else { 
+      stringHour = theHour.toString();
+  }
+
+  const theTime = stringHour + stringMin + fileSystem[record].updatedAt.substring(12);
+  const theDay = Number(fileSystem[record].updatedAt.substring(6,8)) + addDay;
+  if (theDay < 10){
+    stringDay = "0" + theDay;
+  } else {
+    stringDay = theDay.toString();
+  }
+  const refDate=fileSystem[record].updatedAt.substring(0,6) + stringDay + theTime;
+
+  const aDate = new Date();
+  const theDate = aDate.toUTCString();
+  const myTime = theDate.substring(17,19)+theDate.substring(20,22)+theDate.substring(23,25);
+  const myDate = convertDate(aDate,"YYYYMMDD") + myTime;
+  //console.log('validateLock -> myDate=' + myDate + ' refDate='+refDate);
+  if (Number(myDate) > Number(refDate)){
+      fileSystem[record].createdAt=myDate;
+      fileSystem[record].updatedAt=myDate;
+      fileSystem[record].bucket=inData.bucket;
+      fileSystem[record].object=inData.object;
+      fileSystem[record].byUser=inData.user;
+      fileSystem[fileSystem.length-1].IpAddress=inData.IpAddress;
+      return(fileSystem);
+  } else {
+      return(300);
+  }
+}
+
+function updatedAt(fileSystem,inData,iRecord){
+  const aDate=new Date();
+  const theDate=aDate.toUTCString();
+  const myTime=theDate.substring(17,19)+theDate.substring(20,22)+theDate.substring(23,25);
+  const myDate=convertDate(aDate,"YYYYMMDD") + myTime;
+  fileSystem[iRecord].updatedAt=myDate;
+  return(fileSystem);
+}
+
+function convertDate(theDate, theFormat) {
+  var formattedDate=theFormat;
+  //const myDate=new Date();
+  //var myUTCDate=theDate.toUTCString();
+  //const tabMonth=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  //console.log('convertDate myDate='+myDate);
+  //var YY =myDate.substring(11,15);
+  //for (var i=0; i<tabMonth.length & tabMonth[i]!== myDate.substring(4,7); i++){};
+  //var MM =i+1;
+  //var DD =myDate.substring(8,10);
+ 
+  var YY =theDate.getUTCFullYear();
+  var MM =theDate.getUTCMonth() + 1;
+  var DD =theDate.getUTCDate();
+  //console.log('convertDate date= '+ YY + ' ' + MM + " " + DD);
+  
+  var iYear=0;
+  var iMonth=0;
+  var iDay=0;
+  var MM_String="";
+  var DD_String="";
+  
+  const sep1Pos0=theFormat.indexOf('/');
+  const sep2Pos0=theFormat.indexOf('-');
+  const sep1Pos1=theFormat.substring(sep1Pos0+1).indexOf('/');
+  const sep2Pos1=theFormat.substring(sep2Pos0+1).indexOf('-');
+
+  if (MM<10){
+      MM_String="0" + MM.toString();
+  }
+  else{
+      MM_String=MM.toString();
+  }
+  if (DD<10){
+      DD_String="0" + DD.toString();
+  }
+  else{
+     DD_String=DD.toString();
+  }
+
+
+  iYear=theFormat.indexOf("y")+1;
+  if (iYear===0) {iYear=theFormat.indexOf("Y")+1};
+  if (iYear===0) {formattedDate= ""} 
+  else{
+      iMonth=theFormat.indexOf("m")+1;
+      if (iMonth===0) {iMonth=theFormat.indexOf("M")+1};
+      if (iMonth===0) {formattedDate= ""} 
+      else{
+          iDay=theFormat.indexOf("d")+1;
+          if (iDay===0) {iDay=theFormat.indexOf("D")+1};
+          if (iDay===0) {formattedDate= ""} 
+          else{
+              formattedDate=formattedDate.replace(formattedDate.substring(iYear-1,iYear+3),YY.toString());
+              formattedDate=formattedDate.replace(formattedDate.substring(iMonth-1,iMonth+1),MM_String);
+              formattedDate=formattedDate.replace(formattedDate.substring(iDay-1,iDay+1),DD_String);
+          }
+      }
+  }    
+  return(formattedDate);
+}
+
+
+
+const updateFileSystemOLD = async (req, res) => {
+  try {
     //console.log('===> before updateFileSystem()');
     const newMetadata = {
       cacheControl: 'public,max-age=0,no-cache,no-store',
@@ -371,7 +713,7 @@ const updateFileSystem = async (req, res) => {
       //} else 
       if (Array.isArray(theStatus)===false){
           console.log("this is not a file system record; return the error code or inData object ");
-          if (typeof theStatus !== object){
+          if (typeof theStatus !== 'object'){
               if (theStatus===300){
                 console.log( tabLock[inData.iWait].object + ' ==> already locked ; status= ' + theStatus);
                 return res.status(300).send({
@@ -497,7 +839,7 @@ const updateFileSystem = async (req, res) => {
     } else if (inData.action==="check" || inData.action==="updatedAt" ){
       console.log('check file ' + tabLock[inData.iWait].object +  ' does not exist; return inData.status 800');
       inData.createdAt='';
-      inData.modifiedAt='';
+      inData.updatedAt='';
       inData.status=800;
       return res.send(inData);
     } else {
@@ -514,257 +856,6 @@ const updateFileSystem = async (req, res) => {
   */
   }
 };
-
-
-function checkData(fileSystem, inData, tabLock){
-  //console.log('start checkData');
-  if (fileSystem.length > 0 ){
-      for (var i=0; i<fileSystem.length && (fileSystem[i].object!==inData.object || fileSystem[i].bucket!==inData.bucket); i++){}
-      if (inData.action==="lock"){
-          if (i===fileSystem. length ){
-              // record is not locked so create a new record and flag lock to true
-              createRecord(fileSystem,inData);
-
-              console.log('create record ' + inData.object );
-              //const status=saveFile(config, fileSystem, object, bucket);
-              return (fileSystem);
-          } else { // record already exists and already locked
-              console.log('record ' + inData.object + ' already exists and is locked - Error 300');
-              // check wheter it has been locked form more than 1 hour
-              // if yes then lock it for this user
-              return(validateLock(fileSystem,inData,i));
-          }
-      } else if (inData.action==="unlock"){
-          if (i===fileSystem.length ){
-              // record is not found so cannot be unlocked
-              console.log('record not found, so cannot be unlocked - Error 700');
-              return(700);
-          } else { // record is found; delete it
-            if (inData.createdAt === fileSystem[i].createdAt) {
-              fileSystem.splice(i,1);
-              return (fileSystem);
-            } else {
-              console.log('record found but createdAt is different ,  so cannot be unlocked - Error 710');
-              return(710);
-            }
-          }
-      } else if (inData.action==="updatedAt"){
-        if (inData.createdAt === fileSystem[i].createdAt) {
-              return(updatedAt(fileSystem,inData,i));
-        } else {
-          console.log('record found but createdAt is different ,  so cannot be updated - Error 720');
-              return(720);
-        }
-      } else if (inData.action==="check" || inData.action==="check&update"){
-        if (i===fileSystem.length ){ // no record found
-            if (inData.action==="check"){
-              console.log('check file = no record found; return inData.status 800');
-              inData.createdAt='';
-              inData.modifiedAt='';
-              inData.status=800;
-            } else {
-              createRecord(fileSystem,inData);
-              return (fileSystem);
-            }
-            
-        } else {
-          if (tabLock[inData.iWait].createdAt === fileSystem[i].createdAt && tabLock[inData.iWait].updatedAt === fileSystem[i].updatedAt){
-            if (inData.action==="check"){  
-                inData.status=810; 
-                  console.log('check file = record found and locked by same user; return inData.status 810');
-              // same user is locking the file
-            } else {
-              return(updatedAt(fileSystem,inData,i));
-            }
-          } else { 
-              inData.status=820; 
-              console.log('check file = record found and locked by another user; return inData.status 820');
-          }
-        } 
-        return(inData);
-      } else {
-        console.log('wrong inData.action ==> return err-730');
-        return(730);} // wrong action
-  } else { 
-      if (inData.action==="lock"){
-          console.log('fileSystem is empty; createRecord');
-          createRecord(fileSystem,inData);
-          return (fileSystem);
-      } else if (inData.action==="check"  || inData.action==="check&update"){
-          if (inData.action==="check"){
-            console.log('check file = fileSystem is empty; return inData.status 800');
-            inData.createdAt='';
-            inData.modifiedAt='';
-            inData.status=800;
-            return(inData);
-          } else {
-            createRecord(fileSystem,inData);
-            return (fileSystem);
-          }
-      } else {
-        console.log('fileSystem is empty;');
-        return('err-0'); 
-      }
-      
-  }
-}
-
-function createRecord(fileSystem, inData){
-
-  const recordSystem={
-    action:string="",// 'lock' or 'unlock'
-    bucket:string='', 
-    object:string='',
-    user:string="",
-    IpAddress:string="",
-    iWait:number=0,
-    status:number=0,
-    lock:number=0,
-    createdAt:string="",
-    updatedAt:string="" }
-
-  fileSystem.push(recordSystem);
-  fileSystem[fileSystem.length-1].bucket=inData.bucket;
-  fileSystem[fileSystem.length-1].object=inData.object;
-  fileSystem[fileSystem.length-1].byUser=inData.user;
-  fileSystem[fileSystem.length-1].IpAddress=inData.IpAddress;
-  fileSystem[fileSystem.length-1].lock=true;
-  const aDate=new Date();
-  const theDate=aDate.toUTCString();
-  //console.log('theDate=',theDate);
-  const myTime=theDate.substring(17,19)+theDate.substring(20,22)+theDate.substring(23,25);
-  const myDate=convertDate(aDate,"YYYYMMDD") + myTime;
-  //console.log('created & updatedAt=' +myDate);
-  fileSystem[fileSystem.length-1].createdAt=myDate;
-  fileSystem[fileSystem.length-1].updatedAt=myDate;
-}
-
-function validateLock(fileSystem, inData, record){
-  var stringHour='';
-  var stringMin='';
-  var stringDay='';
-  var stringMonth='';
-  var addDay=0;
-  var addHour=0;
-  
-  var theMin=Number(fileSystem[record].updatedAt.substring(10,12)) + Number(inData.timeoutFileSystem.mn); // add xx minutes
-  if (Math.trunc(theMin / 60) > 0){
-    addHour =  Math.trunc(theMin / 60);
-    theMin= theMin % 60;
-  }
-  if (theMin<10){
-      stringMin ='0'+ theMin.toString();
-  } else { 
-      stringMin = theMin.toString();
-  }
-  var theHour=Number(fileSystem[record].updatedAt.substring(8,10)) + Number(inData.timeoutFileSystem.hh) + addHour; // add xx hours;
-  if (Math.trunc(theHour / 24) > 0){
-    addDay =  Math.trunc(theHour / 24);
-    theHour= theHour % 24;
-  }
-  if (theHour<10){
-      stringHour ='0'+ theHour.toString();
-  } else { 
-      stringHour = theHour.toString();
-  }
-
-  const theTime = stringHour + stringMin + fileSystem[record].updatedAt.substring(12);
-  const theDay = Number(fileSystem[record].updatedAt.substring(6,8)) + addDay;
-  if (theDay < 10){
-    stringDay = "0" + theDay;
-  } else {
-    stringDay = theDay;
-  }
-  const refDate=fileSystem[record].updatedAt.substring(0,6) + stringDay + theTime;
-
-  const aDate = new Date();
-  const theDate = aDate.toUTCString();
-  const myTime = theDate.substring(17,19)+theDate.substring(20,22)+theDate.substring(23,25);
-  const myDate = convertDate(aDate,"YYYYMMDD") + myTime;
-  //console.log('validateLock -> myDate=' + myDate + ' refDate='+refDate);
-  if (Number(myDate) > Number(refDate)){
-      fileSystem[record].createdAt=myDate;
-      fileSystem[record].updatedAt=myDate;
-      fileSystem[record].bucket=inData.bucket;
-      fileSystem[record].object=inData.object;
-      fileSystem[record].byUser=inData.user;
-      fileSystem[fileSystem.length-1].IpAddress=inData.IpAddress;
-      return(fileSystem);
-  } else {
-      return(300);
-  }
-}
-
-function updatedAt(fileSystem,inData,iRecord){
-  const aDate=new Date();
-  const theDate=aDate.toUTCString();
-  const myTime=theDate.substring(17,19)+theDate.substring(20,22)+theDate.substring(23,25);
-  const myDate=convertDate(aDate,"YYYYMMDD") + myTime;
-  fileSystem[iRecord].updatedAt=myDate;
-  return(fileSystem);
-}
-
-function convertDate(theDate, theFormat) {
-  var formattedDate=theFormat;
-  //const myDate=new Date();
-  //var myUTCDate=theDate.toUTCString();
-  //const tabMonth=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-  //console.log('convertDate myDate='+myDate);
-  //var YY =myDate.substring(11,15);
-  //for (var i=0; i<tabMonth.length & tabMonth[i]!== myDate.substring(4,7); i++){};
-  //var MM =i+1;
-  //var DD =myDate.substring(8,10);
- 
-  var YY =theDate.getUTCFullYear();
-  var MM =theDate.getUTCMonth() + 1;
-  var DD =theDate.getUTCDate();
-  //console.log('convertDate date= '+ YY + ' ' + MM + " " + DD);
-  
-  var iYear=0;
-  var iMonth=0;
-  var iDay=0;
-  var MM_String="";
-  var DD_String="";
-  
-  const sep1Pos0=theFormat.indexOf('/');
-  const sep2Pos0=theFormat.indexOf('-');
-  const sep1Pos1=theFormat.substring(sep1Pos0+1).indexOf('/');
-  const sep2Pos1=theFormat.substring(sep2Pos0+1).indexOf('-');
-
-  if (MM<10){
-      MM_String="0" + MM.toString();
-  }
-  else{
-      MM_String=MM.toString();
-  }
-  if (DD<10){
-      DD_String="0" + DD.toString();
-  }
-  else{
-     DD_String=DD.toString();
-  }
-
-
-  iYear=theFormat.indexOf("y")+1;
-  if (iYear===0) {iYear=theFormat.indexOf("Y")+1};
-  if (iYear===0) {formattedDate= ""} 
-  else{
-      iMonth=theFormat.indexOf("m")+1;
-      if (iMonth===0) {iMonth=theFormat.indexOf("M")+1};
-      if (iMonth===0) {formattedDate= ""} 
-      else{
-          iDay=theFormat.indexOf("d")+1;
-          if (iDay===0) {iDay=theFormat.indexOf("D")+1};
-          if (iDay===0) {formattedDate= ""} 
-          else{
-              formattedDate=formattedDate.replace(formattedDate.substring(iYear-1,iYear+3),YY.toString());
-              formattedDate=formattedDate.replace(formattedDate.substring(iMonth-1,iMonth+1),MM_String);
-              formattedDate=formattedDate.replace(formattedDate.substring(iDay-1,iDay+1),DD_String);
-          }
-      }
-  }    
-  return(formattedDate);
-}
 
 module.exports = {
   upload,
