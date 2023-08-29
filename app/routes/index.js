@@ -6,7 +6,7 @@ const tutorials =  require("../controllers/tutorial.controller.js");
 let routes = (app) => {
   router.post("/upload/:projectId/:cacheControl/:contentType", controller.upload);
   router.post("/updateMeta/:projectId/:name/:newMetaData", controller.updateMeta);
-  router.get("/files/:projectId", controller.getListFiles);
+  router.get("/listFiles/:projectId", controller.getListFiles);
   router.get("/filesmeta/:projectId", controller.getListMetaDataFiles);
   router.get("/files/:projectId/:name", controller.getFileContent);
   router.get("/meta/:projectId/:name", controller.getObjectMeta);
@@ -16,6 +16,20 @@ let routes = (app) => {
   router.get("/move/:projectId/:DESTbucket/:SRCname/:DESTname", controller.moveObject);
   router.get("/copy/:projectId/:DESTbucket/:SRCname/:DESTname", controller.copyObject);
   router.get("/updateFileSystem/:projectId/:name/:inData/:tabLock", controller.updateFileSystem);
+
+  router.get("/checkLogin/:projectId/:userId/:psw/", controller.checkLogin);
+
+  router.get("/encryptFn/:projectId/:inData/:inKey/:inMethod/:inAuth", controller.encryptFn);
+  router.get("/decryptFn/:projectId/:inData/:inKey/:inMethod/:inAuth", controller.decryptFn);
+
+  router.get("/requestDefaultCredentials/:projectId", controller.requestDefaultCredentials);
+  router.get("/requestTokenOAuth2/:projectId", controller.requestTokenOAuth2);
+  router.get("/refreshToken/:projectId", controller.refreshToken);
+  router.get("/revokeToken/:projectId", controller.revokeToken);
+  router.get("/checkAccessToken/:projectId/:accessToken", controller.checkAccessToken);
+  router.get("/getCredentials/:projectId/:name", controller.getCredentials);
+
+  
 /*============ CONFIG  =============*/
   // Retrieve configServer file
   ////router.get("/config/:db/:collection", configs.findCollection);

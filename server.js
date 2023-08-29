@@ -19,12 +19,17 @@ const initRoutes = require("./app/routes");
 initRoutes(app);
 
 
-
+const myVersion="Version 28AUG2023 V0"
 app.get("/", (req, res) => {
-  res.json({ message: "GoogleCloud & MongoDB - Version 21AUG2023 V2 - server.js [express node.js]." });
+  res.json({ message: "GoogleCloud & MongoDB - " + myVersion + " - server.js [express node.js]." });
 });
 const port = process.env.PORT || 8080;
 app.listen(port, () => {
-  console.log(`==> Running V4 at localhost:${port}`);
+  console.log(`==> Running ${myVersion} at localhost:${port}`);
 });
+
+
+
+
+
 

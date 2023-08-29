@@ -15,13 +15,39 @@ const { Storage } = require("@google-cloud/storage");
 const { Console } = require("console");
 const { stringify } = require("querystring");
 const { MAX_RETRY_DEFAULT } = require("@google-cloud/storage/build/src/storage");
+const {GoogleAuth} = require('google-auth-library');
+const {OAuth2Client} = require('google-auth-library');
+// const open = require('open');
+//const destroyer = require('server-destroy');
+const {google} = require('googleapis');
+const http = require('http');
+const https = require('https');
+const url = require('url');
+
+const CryptoJS = require ('crypto-js');
+
+const nodecache = require('node-cache');
+const fs = require('fs');
 
 // Instantiate a storage client with credentials
 //const storage = new Storage({ keyFilename: "google-cloud-key.json" });
-const storage = new Storage();
+var storage = new Storage();
 var bucket = storage.bucket("xmv_messages");
 var bucketFileSystem = storage.bucket("config-xmvit");
+var cache = new nodecache;
 
+var oauth2Client = new google.auth.OAuth2(
+ // "699868766266-iimi67j8gvpnogsq45jul0fbuelecp4i.apps.googleusercontent.com",
+  //"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",
+  "http://localhost:4200/oauth2callback"
+);
+
+var credentials = '';
+
+// Access scopes 
+const scopes = [
+  'https://www.googleapis.com/auth/devstorage.read_write', 'https://www.googleapis.com/auth/devstorage.full_control'
+];
 
 async function  enableUniformBucketLevelAccess(bucketName) {
   await storage.bucket(bucketName).setMetadata({
@@ -29,11 +55,330 @@ async function  enableUniformBucketLevelAccess(bucketName) {
       uniformBucketLevelAccess: {
         enabled: true,
       },
-    },
+    }, 
   });
 }
 
-const upload = async (req, res) => {
+
+const requestTokenOAuth2 = async (req, res) => {
+  try{
+  
+    // Generate a url that asks permissions for the Drive activity scope
+    const authorizationUrl = oauth2Client.generateAuthUrl({
+      // 'online' (default) or 'offline' (gets refresh_token)
+      access_type: 'offline', 
+        /** Pass in the scopes array defined above.
+        * Alternatively, if only one scope is needed, you can pass a scope URL as a string */
+      scope: scopes,
+
+
+      //response_type:'code',
+      // Enable incremental authorization. Recommended as a best practice.
+      //include_granted_scopes: true,
+
+    });
+
+    const server = http.createServer(async function (req, res) {
+      try{
+      // Example on redirecting user to Google's OAuth 2.0 server.
+
+        // res.writeHead(301, { "Location": authorizationUrl });
+
+  
+      // Receive the callback from Google's OAuth 2.0 server.
+      // if (req.url.indexOf('/oauth2callback') > -1) {
+      if (req.url.startsWith('/oauth2callback')) {
+        // Handle the OAuth 2.0 server response
+        let q = url.parse(req.url, true).query;
+  
+        if (q.error) { // An error response e.g. error=access_denied
+          console.log('Error:' + q.error);
+        } else { // Get access and refresh tokens (if access_type is offline)
+          let { tokens } = await oauth2Client.getToken(q.code);
+          oauth2Client.setCredentials(tokens);
+          console.info('Tokens acquired.');
+          /** Save credential to the global variable in case access token was refreshed.
+            * ACTION ITEM: In a production app, you likely want to save the refresh token
+            *              in a secure persistent database instead. */
+          userCredential = tokens;
+          console.log('userCredential='+userCredential);
+          return res.status(200).send(userCredential);
+         
+        }
+      }
+      res.end();
+    }
+    catch (err){
+      return res.status(882).send({ message: "Pb with authentication", error:err });
+    }
+    })
+  } catch (err){
+      return res.status(880).send({ message: "Pb with authentication", error:err });
+  }
+  
+}
+
+const refreshToken = async (req, res) => {
+  const authorizationUrl = oauth2Client.generateAuthUrl({
+    // 'online' (default) or 'offline' (gets refresh_token)
+    access_type: 'offline', 
+      /** Pass in the scopes array defined above.
+      * Alternatively, if only one scope is needed, you can pass a scope URL as a string */
+    scope: scopes,
+    // Enable incremental authorization. Recommended as a best practice.
+    //include_granted_scopes: true,
+    prompt: 'consent'
+  });
+  res.writeHead(301, { "Location": authorizationUrl });
+ 
+}
+
+const revokeToken = async (req, res) => {
+}
+
+const requestDefaultCredentials = async (req, res) => {
+  try {
+    if ( cache.has(1)){
+       credentials=cache.get(1);
+    } else {
+       
+        const auth = new GoogleAuth({
+          scope: scopes,
+          projectId: req.params.projectId
+        });
+        const client = await auth.getClient();
+        const url = `https://dns.googleapis.com/dns/v1/projects/${req.params.projectId}`;
+
+        const theResponse = await client.request({ url });
+        console.log(theResponse.data);
+        
+        credentials= {access_token:client.credentials.access_token,id_token:client.credentials.id_token
+          , refresh_token:client.credentials.refresh_token, token_type:client.credentials.token_type}
+
+        cache.set(1, credentials)
+    }
+    if ( cache.has(0)){
+      var myCrypto=cache.get(0);
+    } else {
+      storage = await getClient(req.params.projectId);
+
+        if (req.query.bucket!==''){
+            bucket = storage.bucket('xmv-cryptodata');
+            bucket.projectId=req.params.projectId;
+          } 
+        const [downloadFile] = await bucket.file('cryptoKey').download();
+        cache.set(0,JSON.parse(downloadFile))
+        myCrypto=JSON.parse(downloadFile);
+    }
+
+    res.status(200).send({credentials:credentials});
+  }
+  catch (err) {
+      res.status(700).send(err);
+  }
+}
+
+
+const  checkAccessToken = async (req, res) => {
+    // after acquiring an oAuth2Client...
+    const auth = new GoogleAuth({
+      scope: scopes,
+      projectId: req.params.projectId
+    });
+    const client = await auth.getClient();
+    const tokenInfo = await client.getTokenInfo(req.params.accessToken);
+
+    // take a look at the scopes originally provisioned for the access token
+    console.log("tokenInfo="+tokenInfo.scopes);
+    return res.status(200).send(tokenInfo);
+}
+
+
+async function getClient(projectId){
+  const auth = new GoogleAuth({
+    scope: scopes,
+    projectId: projectId
+  });
+  const client = await auth.getClient();
+
+  const storageOptions = {
+    projectId: projectId,
+    authClient: client,
+  };
+  
+  return (new Storage(storageOptions));
+}
+
+const getFileContent = async (req, res) => {
+  try {
+    storage = await getClient(req.params.projectId);
+
+    if (req.query.bucket!==''){
+      bucket = storage.bucket(req.query.bucket);
+      bucket.projectId=req.params.projectId;
+    } 
+    /**
+    const [metaData] = await bucket.file(req.params.name).getMetadata();
+    console.log("File found & link is " + metaData.mediaLink);
+    res.redirect(metaData.mediaLink);
+     */
+
+    const [downloadFile] = await bucket.file(req.params.name).download();
+    res.status(200).send(JSON.parse(downloadFile));
+
+  }
+  catch (err) {
+    
+    console.log("Could not get the file. " + err);
+    res.status(404).send( { message:"Could not get the file. ", error: err } );
+  }
+};
+
+async function getUserPswRecord(projectId, userId){
+  storage = await getClient(projectId);
+  bucket = storage.bucket('manage-login');
+  bucket.projectId=projectId;
+
+  const [downloadFile] = await bucket.file(userId+'PSW.json').download();
+
+  const decrypt = await getDecrypt(JSON.parse(downloadFile).psw , JSON.parse(downloadFile).key, JSON.parse(downloadFile).method ,0)
+  return ({data:decrypt, bucketUserInfo:JSON.parse(downloadFile).bucketUserInfo});
+}
+
+
+const  checkLogin = async (req, res) => {
+  try {
+    const myDecrypt = await getUserPswRecord(req.params.projectId,req.params.userId );
+    
+    if (myDecrypt.data === "Key invalid" || myDecrypt.data !== req.params.psw){
+      res.status(700).send({error:"invalid request"});
+    } else {
+      //storage = await getClient(req.params.projectId);
+      bucket = storage.bucket(myDecrypt.bucketUserInfo);
+      //bucket.projectId=req.params.projectId;
+      const [downloadFile] = await bucket.file(req.params.userId+'.json').download();
+      res.status(200).send(JSON.parse(downloadFile));
+    }
+  }
+  catch (err) {
+    console.log("Could not get the file. " + err);
+    res.status(404).send( { message:"Could not get the file. ", error: err } );
+  }
+}
+
+
+const  encryptFn = async (req, res) => {
+  try {
+    const cryptAuth = JSON.parse(req.params.inAuth);
+    if (cryptAuth.userId !== undefined && cryptAuth.psw !== undefined && cryptAuth.crypto !== undefined){
+        if (cryptAuth.crypto === true){  
+          const myDecrypt = await getUserPswRecord(req.params.projectId,cryptAuth.userId );
+            if (myDecrypt.data === "Key invalid" || myDecrypt.data !== cryptAuth.psw){
+                  res.status(701).send({error:"invalid request"});
+            } else {
+              const encrypt = await getEncrypt(req.params.inData, req.params.inKey, req.params.inMethod, 0);
+              res.send({response:encrypt});
+            } 
+        } else {
+          res.status(702).send({error:"invalid request"});
+        }
+    } else {
+        res.status(702).send({error:"invalid request"});
+      }
+  }
+  catch (err){
+    res.status(700).send('pb with encryptFn');
+  }
+}
+
+const  decryptFn = async (req, res) => {
+  try {
+    const cryptAuth = JSON.parse(req.params.inAuth);
+    if (cryptAuth.userId !== undefined && cryptAuth.psw !== undefined && cryptAuth.crypto !== undefined){
+      if (cryptAuth.crypto === true){  
+          const myEncrypt = await getUserPswRecord(req.params.projectId,cryptAuth.userId );
+          if (myEncrypt.data === "Key invalid" || myEncrypt.data !== cryptAuth.psw){
+                res.status(701).send({error:"invalid request"});
+          } else {
+            const decrypt = await getDecrypt(req.params.inData, req.params.inKey, req.params.inMethod, 0);
+            res.send({response:decrypt});
+          }
+      } else {
+          res.status(702).send({error:"invalid request"});
+      }
+    } else {
+        res.status(702).send({error:"invalid request"});
+    }
+    }
+    catch (err){
+      res.status(700).send('pb with decryptFn');
+    }
+}
+
+async function getEncrypt(Decrypt, key, method, i_theFour){
+    if ( cache.has(0)){
+      var myCrypto=cache.get(0);
+    } else {
+        const [downloadFile] = await bucket.file('cryptoKey').download();
+        cache.set(0,JSON.parse(downloadFile))
+        myCrypto=JSON.parse(downloadFile);
+    }
+  if (key > -1 && key <myCrypto.tab.length){
+      var myKey=myCrypto.tab[key-1].theKey;
+  } else {
+    Encrypt='Key invalid';
+    return(Encrypt);
+  }
+  const IV = myCrypto.theFour[i_theFour]; 
+  const keyHex = CryptoJS.enc.Utf8.parse(myKey);
+  const iv = CryptoJS.enc.Utf8.parse(IV);
+  const mode = CryptoJS.mode.CBC;
+  var Encrypt='';
+  if (method==='DES'){
+      // ==== DES
+    Encrypt = CryptoJS.TripleDES.encrypt(Decrypt, keyHex, { iv, mode }).toString();
+    } else if (method==='AES'){
+          // ==== AES
+          Encrypt=CryptoJS.AES.encrypt(Decrypt, myKey).toString();
+          } 
+         //console.log('Encrypt function: decrypt ', Decrypt, 'Method  ', method, 'encrypt', Encrypt);
+    return(Encrypt);
+}
+
+
+async function getDecrypt(Encrypt, key, method, i_theFour){
+  
+    if ( cache.has(0)){
+      var myCrypto=cache.get(0);
+    } else {
+        const [downloadFile] = await bucket.file('cryptoKey').download();
+        cache.set(0,JSON.parse(downloadFile))
+         myCrypto=JSON.parse(downloadFile);
+    }
+
+  if (key > -1 && key <myCrypto.tab.length){
+    var myKey=myCrypto.tab[key-1].theKey;
+  } else {
+    Decrypt='Key invalid';
+    return(Decrypt);
+  }
+  const IV = myCrypto.theFour[i_theFour]; 
+  const keyHex = CryptoJS.enc.Utf8.parse(myKey);
+  const iv = CryptoJS.enc.Utf8.parse(IV);
+  const mode = CryptoJS.mode.CBC;
+  var Decrypt='';
+  if (method==='DES'){
+    // ==== DES
+    Decrypt = CryptoJS.TripleDES.decrypt(Encrypt, keyHex, { iv, mode }).toString(CryptoJS.enc.Utf8);
+  } else if (method==='AES'){
+        // ==== AES
+        Decrypt=CryptoJS.AES.decrypt(Encrypt, myKey).toString(CryptoJS.enc.Utf8);
+        } 
+        //console.log('Decrypt function: decrypt ', Decrypt, 'Method  ', method, 'encrypt', Encrypt);
+  return(Decrypt); 
+}
+
+const upload =async (req, res) => {
   try {
     //console.log(' ===> upload');
     if (req.query.bucket!==''){
@@ -106,12 +451,7 @@ const upload = async (req, res) => {
 };
 
 const updateMeta = async (req, res) => {
- /*
-  const newMetadata = {
-    cacheControl: 'public,max-age=0,no-cache,no-store',
-    contentType: 'application/json'
-  };
-   */
+
   bucket = storage.bucket(req.query.bucket);
   bucket.projectId=req.params.projectId;
 
@@ -150,6 +490,8 @@ const getListFiles = async (req, res) => {
   }
 };
 
+
+
 const getListMetaDataFiles = async (req, res) => {
   try {
     if (req.query.bucket!==''){
@@ -172,24 +514,34 @@ const getListMetaDataFiles = async (req, res) => {
   }
 };
 
-const getFileContent = async (req, res) => {
-  try {
+const getCredentials= async (req, res) => {
+ 
+  const auth = new GoogleAuth({
+    scope: scopes,
+    projectId: req.params.projectId
+  });
+  const client = await auth.getClient();
+  const storageOptions = {
+    projectId: req.params.projectId,
+    authClient: client,
+  };
+  storage = new Storage(storageOptions);
+
     //console.log('===> before getFileContent()');
     if (req.query.bucket!==''){
       bucket = storage.bucket(req.query.bucket);
       bucket.projectId=req.params.projectId;
+      //bucket.authClient= client;
     } 
     const [metaData] = await bucket.file(req.params.name).getMetadata();
-    //console.log("File found & link is " + metaData.mediaLink);
-    res.redirect(metaData.mediaLink);
-    
-  } catch (err) {
-    //console.log("Could not get the file. " + err);
-    res.status(404).send({
-      message: "Could not get the file. " + err,
-    });
-  }
-};
+
+    const credentials= {access_token:client.credentials.access_token,id_token:client.credentials.id_token
+      , refresh_token:client.credentials.refresh_token, token_type:client.credentials.token_type}
+  
+      res.status(200).send({credentials:credentials});
+
+}
+
 
 const getObjectMeta = async (req, res) => {
   try {
@@ -352,7 +704,7 @@ const updateFileSystem = async (req, res) => {
               }
           }
         }
-        return res.send(900);
+        return res.send({message:"on Destroy is completed", status:999});
       } else {
         return res.send({message:"wrong action ; onDestroy was expected", error:998});
       }
@@ -870,5 +1222,14 @@ module.exports = {
   moveObject,
   copyObject,
   updateFileSystem,
+  requestDefaultCredentials,
+  requestTokenOAuth2,
+  refreshToken,
+  revokeToken,
+  checkAccessToken,
+  getCredentials,
+  checkLogin,
+  encryptFn,
+  decryptFn
   
 };
