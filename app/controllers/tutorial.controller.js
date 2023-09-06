@@ -12,39 +12,27 @@ findAllPublished
 
 const { ServerApiVersion } = require('mongodb');
 
-
-/** x509 certification is not used; better to use id + psw to access in test and prod 
- 
-//const credentials ="/Users/xaviervanstaen/X509-cert-6982656651602215038.pem";
-const credentials ="/etc/ssl/X509-cert-MongoDB.pem";
-var optionsB = {
-    sslKey: credentials,
-    sslCert: credentials,
-    serverApi: ServerApiVersion.v1 ,
-    useNewUrlParser: true,
-    useUnifiedTopology: true,
-    dbName:""
-  }
- */
-
-var optionsA = {
-    serverApi: ServerApiVersion.v1 ,
-    useNewUrlParser: true,
-    useUnifiedTopology: true,
-    dbName:""
-  }
- 
-var current_dbName = "init";
-var previous_dbName = '';
-
-var callFunction = '';
- 
 const dbConfig = require("../config/db.config.js"); // contains the mongodb url
+
+
 const mongoose = require("mongoose");
 mongoose.Promise = global.Promise;
 const db = {};
-db.mongoose = mongoose;
 db.url = dbConfig.url;
+db.mongoose = mongoose;
+
+var options = {
+    serverApi: ServerApiVersion.v1 ,
+    useNewUrlParser: true,
+    useUnifiedTopology: true,
+    dbName:""
+  }
+ 
+var current_dbName = "";
+var previous_dbName = "";
+ 
+const nodecache = require('node-cache');
+var cache = new nodecache;
 
 
 /***************  needed for each database *****************/
@@ -59,33 +47,108 @@ db.config.collection.name='configServer';
 const Config = db.config;
 /************************************************************/
 
-//async function accessMongo(){
+
+
+module.exports.getConfigServer = async function () {
+
+   const myValue = await getConfigServer();
+    try{
+      console.log('ConfigServer = ' + JSON.stringify(myValue));
+      return (myValue)
+    }
+    catch(err) {
+      console.log('Error to access ConfigServer = ' + err);
+      return (err)
+    }
+}
+
+module.exports.getConfigData = async function (testProd) {
+
+  var baseUrl = undefined;
+  var condition = baseUrl ? { baseUrl: { $regex: new RegExp(baseUrl), $options: "i" } } : {};
+  try {
+    const theValue = await Config.find(condition);
+    if (theValue.length!==0){
+      testData=JSON.stringify(theValue);
+      const record = JSON.parse(testData);
+      cache.set(0, record[0]);
+      cache.set(1, record[1]);
+
+      //return ({status:200,config:data});
+      console.log('cache is set up; status=200');
+      return ({status:200,configProd:record[0],configTest:record[1]});
+    } else {
+      console.log('pb to retrieve config data; status=510');
+      return ({status:510,err:'problem to retrieve content of configDB'});
+    }
+  }
+  catch (err) {
+    console.log (' global error when retrieving config data, err='+err);
+    return err
+  }
+}
+
+module.exports.getFilesToCache = async function (testProd) {
+
+  if ( cache.has(0)){ // should always be true
+    if (testProd==='prod'){
+      var testConfig=cache.get(0);
+    } else {
+      testConfig=cache.get(1);
+    }
+    
+   const filesToCache = testConfig.filesToCache;
+
+    return ({status:200, tab:filesToCache});
+  } else {
+    return ({status:501,mesage:'configData cache does not exist; pb when server was initialised'})
+  }
+}
+
+
+getConfigServer  = async function () {
+  
+       current_dbName='ConfigDB';
+       db.config.collection.collectionName='configServer';
+       db.config.collection.name='configServer';
+ 
+       const mongoStatus = await accessMongo();
+       try {
+             return (mongoStatus)
+             }
+        catch (err) {
+          console.log(err);
+          return (err);
+        }
+
+  }
+
+
 async function accessMongo(){
     if (previous_dbName!== current_dbName){
         if (previous_dbName!=='') {
-          // seems mongoose does not accept to connect to more than one dabase
+          // seems mongoose does not accept to connect to more than one database
           // db.$namedb keeps the value of the first db opened 
               mongoose.connection.close();
         }
-        optionsA.dbName = current_dbName;
+        options.dbName = current_dbName;
         previous_dbName = current_dbName;
         Config.db.name=current_dbName;
 
-        await db.mongoose
-          .connect(db.url, optionsA)
-          .then(() => {
-            console.log("Connected to MONGO DB " + optionsA.dbName + '  on url= ' + db.url);
-  
+        await db.mongoose.connect(db.url, options)
+          try {
+            console.log("Connected to MONGO DB " + options.dbName + '  on url= ' + db.url);
+            return ({status:200});
 
-          })
-          .catch(err => {
-            console.log("Cannot connect to MONGO DB!" + optionsA.dbName + '  error is ', err);
-            process.exit();
-          });
+          }
+          catch(err ) {
+            console.log("Cannot connect to MONGO DB!" + options.dbName + '  error is ', err);
+            return ({status:503, err:err});
+            //process.exit();
+          }
 
     } 
 }
-
 
 
 
@@ -257,32 +320,45 @@ exports.findByTitle = (req, res) => {
 };
 
 // Retrieve config from the database.
-exports.findCollection = (req, res) => {
-  if (req.params.db!==''){
-    current_dbName=req.params.db;
-  }
+// const findCollection = async (req, res) => {
+exports.findConfig = (req, res) => {
+  console.log('findCollection/configServer');
+  if ( cache.has(0)){
+    if (req.params.testProd==='prod'){
+      var configServer=cache.get(0);
+    } else {
+      configServer=cache.get(1);
+    }
+      console.log('configServer retrieved from cache(0)');
+      return res.send(configServer);
+  } else {
+        if (req.params.db!==''){
+          current_dbName=req.params.db;
+        }
 
-  // find by baseUrl --- could be more a general parameter containing a string
-  var baseUrl = req.query.baseUrl;
+        // find by baseUrl --- could be more a general parameter containing a string
+        var baseUrl = req.query.baseUrl;
 
-  db.config.collection.collectionName=req.params.collection;
-  db.config.collection.name=req.params.collection;
+        db.config.collection.collectionName=req.params.collection;
+        db.config.collection.name=req.params.collection;
 
-  var condition = baseUrl ? { baseUrl: { $regex: new RegExp(baseUrl), $options: "i" } } : {};
+        var condition = baseUrl ? { baseUrl: { $regex: new RegExp(baseUrl), $options: "i" } } : {};
 
-  const connected = accessMongo().then
-   (result => {
-        Config.find(condition)
-          .then(data => {
-            return res.send(data);
-          })
-          .catch(err => {
-                return res.status(500).send({
-                  message:
-                    err.message || "Some error occurred while retrieving config"
+        accessMongo().then
+        (result => {
+              Config.find(condition)
+                .then(data => {
+                  testData=JSON.stringify(data);
+                  const record = JSON.parse(testData);
+                  cache.set(0, record[0]); // prod
+                  cache.set(1, record[1]); // test
+                  //cache.set(0, data);
+                  return res.send(data);
+                })
+                .catch(err => {
+                      return res.status(500).send({ message:err.message || "Some error occurred while retrieving config"});
                 });
           });
-    });
-};
-
+      }
+}
 

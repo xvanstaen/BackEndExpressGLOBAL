@@ -1,0 +1,408 @@
+
+
+const { MAX_RETRY_DEFAULT } = require("@google-cloud/storage/build/src/storage");
+const { Storage } = require("@google-cloud/storage");
+
+const fileController = require("./file.controller");
+const stdFunctions = require("./stdFunctions");
+const authFn = require("./authFn");
+
+const { stringify } = require("querystring");
+const {google} = require('googleapis');
+const http = require('http');
+const https = require('https');
+const url = require('url');
+
+const nodecache = require('node-cache');
+var cache = new nodecache;
+
+var credentials='';
+var lockFileSystem=[];
+
+const onFileSystem = async (req, res) => {
+  try {
+    var tabLock=JSON.parse(req.params.tabLock);
+    if ( cache.has(0)){
+        credentials=cache.get(0);
+    } else {
+      const theValue = await authFn.getDefaultCredentials(req.params.projectId);
+      if (theValue.status === 200){
+        cache.set(0,theValue.credentials);
+        credentials=theValue.credentials;
+      } 
+    }
+    if (credentials.userServerId===undefined || tabLock[0].credentialDate < credentials.creationDate){
+      console.log('server has been reinitialized ; restart your apps' );
+      return res.send({msg: 'server has been reinitialized ; restart your apps', status:955});
+    }
+
+     
+      console.log('===> in updateFileSystem() for user ' + tabLock[req.params.iWait].userServerId);
+      if (tabLock[0].action!=='onDestroy'){
+        const inUse=inUseFileSystem(tabLock[req.params.iWait]);
+        if (inUse.code!==0 ){
+          console.log('retry later, status error=' + inUse.code);
+          return res.send({msg: 'retry later', status:inUse.code});
+        }
+      }
+
+      var theStatus = [];
+         
+        //console.log('theFileParse=',theFileParse);
+      var tabInUse=[];
+      if (tabLock[req.params.iWait].action==='onDestroy'  ){
+        for (var iWait=0; iWait<tabLock.length; iWait++){
+          
+          if (tabLock[iWait].lock===1){
+            tabLock[iWait].action='onDestroy';
+            const inUse = inUseFileSystem(tabLock[iWait]);
+            tabInUse[iWait]=inUse.code;
+          } else {
+            tabInUse[iWait]=1;
+          }
+        }
+        for (var iWait=0; iWait<tabLock.length; iWait++){
+              
+          if (tabLock[iWait].lock===1 ){
+              console.log('onDestroy - userServerId ' + tabLock[iWait].userServerId + ' bucket=' + tabLock[iWait].bucket + '  object=' + tabLock[iWait].object + ' file system=' + tabLock[iWait].objectName);
+              tabLock[iWait].action='unlock';
+            /***
+              const storage = await authFn.getClient(projectId);
+              const bucketFileSystem = storage.bucket(req.query.bucket);
+              bucketFileSystem.projectId=req.params.projectId;
+              bucketFileSystem.id=req.query.bucket;
+              bucketFileSystem.name=req.query.bucket;
+              const [fileData] = await bucketFileSystem.file(tabLock[iWait].objectName).download();
+              theStatus = checkData(JSON.parse(fileData), iWait, tabLock);
+            ***/
+              const myFileSystem = await getFileSystem(req.query.bucket, req.params.projectId, tabLock[iWait].objectName);
+              theStatus = checkData(myFileSystem, iWait, tabLock);
+
+              tabLock[iWait].action='onDestroy';
+              if (theStatus.theFile !== undefined){
+
+                const code = await saveFS(req.params.projectId, req.query.bucket,tabLock[iWait].objectName,JSON.stringify(theStatus.theFile),tabLock[iWait], tabInUse[iWait]);
+                if (tabInUse[iWait]===0){
+                  resetInUseFileSystem(tabLock[iWait]);
+                  tabInUse[iWait]===1;
+                }
+                if (code===200){
+                  return res.send({tabLock:tabLock, message: tabLock[req.params.iWait].action + " is completed for user " + tabLock[req.params.iWait].userServerId, status:200});
+                } else if (code===201){
+                  return res.send({tabLock:tabLock, message: tabLock[req.params.iWait].action + " is completed without metadata for user " + tabLock[req.params.iWait].userServerId, status:200});
+                } else {
+                  return res.send({message:"after save is a failure for user " + tabLock[req.params.iWait].userServerId +  ' on action ' + tabLock[req.params.iWait].action, status:997});
+                }
+                
+
+              } else {
+                // no destroy because record didn't belong to this user
+                // release the unlock
+                console.log('cannot destroy record of ' + tabLock[iWait].objectName + ' userServerId ' +  tabLock[iWait].userServerId +   ' because locked by another user')
+                if (tabInUse[iWait]===0){
+                  resetInUseFileSystem(tabLock[iWait]);
+                  tabInUse[iWait]===1;
+                }
+
+              }
+
+          }
+        }
+
+        console.log('on Destroy is completed for userServerId ' +  tabLock[0].userServerId)
+        return res.send({message:"on Destroy is completed", status:999});
+      } else if (tabLock[req.params.iWait].action==='lock'|| tabLock[req.params.iWait].action==='unlock' ||
+            tabLock[req.params.iWait].action==='check' || tabLock[req.params.iWait].action==='check&update'
+            || tabLock[req.params.iWait].action==='updatedAt' ) {
+
+          // const [fileData] = await bucketFileSystem.file(tabLock[req.params.iWait].objectName).download();
+          const myFileSystem = await getFileSystem(req.query.bucket, req.params.projectId, tabLock[req.params.iWait].objectName)
+                    
+          theStatus =checkData(myFileSystem, req.params.iWait, tabLock);
+          if (theStatus.theFile !== undefined){
+             
+              if (theStatus.record !== undefined && tabLock[req.params.iWait].action==='lock' || tabLock[req.params.iWait].action==='check&update' || tabLock[req.params.iWait].action==='updatedAt'){
+                  tabLock[req.params.iWait].lock=1;
+                  tabLock[req.params.iWait].createdAt=theStatus.theFile[theStatus.record].createdAt;
+                  tabLock[req.params.iWait].updatedAt=theStatus.theFile[theStatus.record].updatedAt;
+              };
+              const code = await saveFS(req.params.projectId, req.query.bucket,tabLock[req.params.iWait].objectName,JSON.stringify(theStatus.theFile),tabLock[req.params.iWait]);
+              
+              if (code===200){
+                return res.send({tabLock:tabLock, message: tabLock[req.params.iWait].action + " is completed for user " + tabLock[req.params.iWait].userServerId, status:200});
+              } else if (code===201){
+                return res.send({tabLock:tabLock, message: tabLock[req.params.iWait].action + " is completed without metadata for user " + tabLock[req.params.iWait].userServerId, status:200});
+              } else {
+                return res.send({message:"after save is a failure for user " + tabLock[req.params.iWait].userServerId +  ' on action ' + tabLock[req.params.iWait].action, status:997});
+              }
+
+        } else {
+          resetInUseFileSystem(tabLock[req.params.iWait]);
+          console.log("pb with " + tabLock[req.params.iWait].action + " for user " + tabLock[req.params.iWait].userServerId)
+          return res.send({message:"pb with " + tabLock[req.params.iWait].action + " for user " + tabLock[req.params.iWait].userServerId, status:theStatus});
+        }
+
+      } else {
+          resetInUseFileSystem(tabLock[req.params.iWait]);
+          return res.send({message:"wrong action for user " + tabLock[req.params.iWait].userServerId, status:998});
+      }
+    }
+  catch (err) {
+    const tabLock=JSON.parse(req.params.tabLock);
+    if (tabLock[0].action='onDestroy'){
+      for (var iWait=0; iWait<tabLock.length; iWait++){
+        if (tabLock[iWait].lock===1){
+          tabLock[iWait].action='onDestroy';
+          resetInUseFileSystem(tabLock[iWait]);
+        } 
+      }
+    }
+        console.log('global failure for user ' + tabLock[req.params.iWait].userServerId + '  error==>' + err);
+        resetInUseFileSystem(tabLock[req.params.iWait]);
+        return res.send({message:"global failure for user " + tabLock[req.params.iWait].userServerId, status:999}); 
+  /*  } */
+  } 
+};
+
+
+function inUseFileSystem(tablockItem){
+
+  const recordFS={
+    action:"", objectName:"", createdAt:"", updatedAt:"", access:0, userServerId:0, dateTime:""
+  }
+  for (var i=0; i<lockFileSystem.length && lockFileSystem[i].objectName!==tablockItem.objectName; i++){ }
+  if (i===lockFileSystem.length){
+    lockFileSystem.push(recordFS);
+    lockFileSystem[lockFileSystem.length-1].objectName = tablockItem.objectName;
+    lockFileSystem[lockFileSystem.length-1].action = tablockItem.action;
+    lockFileSystem[lockFileSystem.length-1].createdAt = tablockItem.createdAt;
+    lockFileSystem[lockFileSystem.length-1].updatedAt = tablockItem.updatedAt;
+    lockFileSystem[lockFileSystem.length-1].userServerId = tablockItem.userServerId;
+    lockFileSystem[lockFileSystem.length-1].access=0;
+    lockFileSystem[lockFileSystem.length-1].dateTime=stdFunctions.defineMyDate();
+    
+    return({code:0});
+  } else {
+    console.log('action on' + tablockItem.objectName + '  userServerId=' + tablockItem.userServerId + '  already requested by another resource');
+    const refDate = stdFunctions.fnAddTime(lockFileSystem[i].dateTime, 0, 2); // 0h2mn
+    const currentDateTime=stdFunctions.defineMyDate();
+    if (currentDateTime > refDate){
+      // the lock was for too long; previous error not detected; 
+      console.log(' lockFile record is updated because was there for more than 2 minutes'); 
+      lockFileSystem[i].objectName = tablockItem.objectName;
+      lockFileSystem[i].action = tablockItem.action;
+      lockFileSystem[i].createdAt = tablockItem.createdAt;
+      lockFileSystem[i].updatedAt = tablockItem.updatedAt;
+      lockFileSystem[i].userServerId = tablockItem.userServerId;
+      lockFileSystem[i].access=0;
+      lockFileSystem[i].dateTime=currentDateTime;
+      return({code:0});
+    } 
+    
+    if (tablockItem.action === 'onDestroy'){
+      lockFileSystem[i].access++
+      return({code:0});
+    }
+    return({code:666,action:lockFileSystem[i]});
+  }
+}
+
+function resetInUseFileSystem(tablockItem){
+
+  for (var i=0; i<lockFileSystem.length && lockFileSystem[i].objectName!==tablockItem.objectName; i++){ }
+  if (i<lockFileSystem.length){
+    if (tablockItem.action === 'onDestroy' && lockFileSystem[i].access>0){
+      lockFileSystem[i].access--
+    } else {
+      lockFileSystem.splice(i,1);
+    }
+  } else {
+    console.log('resetInUseFileSystem - record ' + tablockItem.objectName  + '  userServerId=' + tablockItem.userServerId +  ' not found - CHECK THE CODE --- lockFileSystem.length=' + lockFileSystem.length);
+
+  }
+  return(0);
+}
+
+
+
+
+async function saveFS(projectId, bucket,object,fileContent,tablockItem){
+  const storage = await authFn.getClient(projectId);
+  const bucketFileSystem = storage.bucket(bucket);
+  bucketFileSystem.projectId=projectId;
+  bucketFileSystem.id=bucket;
+  bucketFileSystem.name=bucket;
+  await bucketFileSystem.file(object).save(fileContent);
+  try{
+    const storage = await authFn.getClient(projectId);
+    const bucketFileSystem = storage.bucket(bucket);
+    bucketFileSystem.projectId=projectId;
+    bucketFileSystem.id=bucket;
+    bucketFileSystem.name=bucket;
+    const newMetadata = {
+      cacheControl: 'public,max-age=0,no-cache,no-store',
+      contentType: 'application/json'
+    };
+      //const bucketFileSystem = storage.bucket(req.query.bucket);
+      //bucketFileSystem.projectId=req.params.projectId;
+      //bucketFileSystem.id=req.query.bucket;
+      //bucketFileSystem.name=req.query.bucket;
+      await bucketFileSystem.file(object).setMetadata(newMetadata);
+      try{
+        if (tablockItem.action!=='onDestroy'){
+          resetInUseFileSystem(tablockItem);
+          console.log(tablockItem.action + " is completed for user " + tablockItem.userServerId)
+          //return res.send({tabLock:tabLock, message: tablockItem.action + " is completed for user " + tablockItem.userServerId, status:200});
+        } 
+        return(200);
+
+        
+      }
+      catch (err) {
+        if (tablockItem.action!=='onDestroy'){
+          console.log(tablockItem.action + " is completed without metadata for user " + tablockItem.userServerId + " error==>" + err);
+          resetInUseFileSystem(tablockItem);
+          //return res.send({tabLock:tabLock, message: tablockItem.action + " is completed without metadata for user " + tablockItem.userServerId, status:200});
+        } 
+        return(201);
+
+      }
+      
+    }
+  catch (err) {
+    if (tablockItem.action!=='onDestroy'){
+        console.log('after save is a failure for user ' + tablockItem.userServerId + '  error= ' + err);
+        resetInUseFileSystem(tablockItem);
+        //return res.send({message:"after save is a failure for user " + tablockItem.userServerId +  ' on action ' + tablockItem.action, status:997});
+      } 
+      console.log('saveFS ==> error detected - 997');
+      return(997);
+     
+    }
+}
+
+async function getFileSystem(theBucket, projectId, fileName){
+  try{
+    /*
+    const storage = new Storage();
+    const bucketFileSystem = storage.bucket(theBucket);
+    bucketFileSystem.projectId=projectId;
+    bucketFileSystem.id=theBucket;
+    bucketFileSystem.name=theBucket;
+    */
+
+    const storage = await authFn.getClient(projectId);
+    const bucket = storage.bucket(theBucket);
+    bucket.projectId=projectId;
+    const [fileData] = await bucket.file(fileName).download();
+    return (JSON.parse(fileData));
+  }
+  catch (err)
+  {
+    return([]);
+  }  
+}
+
+
+function checkData(fileSystem, iWait, tabLock){
+  //console.log('start checkData');
+  if (fileSystem.length > 0 ){
+    for (var i=0; i<fileSystem.length && (fileSystem[i].object!==tabLock[iWait].object || fileSystem[i].bucket!==tabLock[iWait].bucket); i++){}
+    if (tabLock[iWait].action==="lock"){
+        if (i===fileSystem. length ){
+            // record is not locked so create a new record and flag lock to true
+            const createFS = stdFunctions.createRecord(fileSystem,tabLock[iWait]);
+            return({theFile:createFS, record:createFS.length-1});
+        } else { // record already exists and already locked
+            console.log('record in file system ' + JSON.stringify(fileSystem[i]) + ' already exists and is locked - Error 300');
+            // check wheter it has been locked form more than 1 hour
+            // if yes then lock it for this user
+            const validate=stdFunctions.validateLock(fileSystem,tabLock[iWait],i);
+            if (typeof validate === 'object') {
+              return({theFile:validate, record:i});
+            } else {return(validate)};
+            
+        }
+    } else if (tabLock[iWait].action==="unlock"){
+        if (i===fileSystem.length ){
+            // record is not found so cannot be unlocked
+            console.log('record not found, so cannot be unlocked - Error 700');
+            return(700);
+        } else { // record is found; delete it
+          if (tabLock[iWait].createdAt === fileSystem[i].createdAt) {
+            console.log("unlock tabLock[iWait].createdAt" + tabLock[iWait].createdAt + '  fileSystem[i].createdAt ' + fileSystem[i].createdAt);
+            fileSystem.splice(i,1);
+            return({theFile:fileSystem});
+          } else {
+            console.log('record found but createdAt is different ,  so cannot be unlocked - Error 710');
+            return(710);
+          }
+        }
+    } else if (tabLock[iWait].action==="updatedAt"){
+      if (tabLock[iWait].createdAt === fileSystem[i].createdAt) {
+        const updatedFS=stdFunctions.updatedAt(fileSystem,iWait,i);
+        return({theFile:updatedFS, record:i});
+            
+      } else {
+        console.log('record found but createdAt is different ,  so cannot be updated - Error 720');
+            return(720);
+      }
+    } else if (tabLock[iWait].action==="check" || tabLock[iWait].action==="check&update"){
+      if (i===fileSystem.length ){ // no record found
+          if (tabLock[iWait].action==="check"){
+            console.log('check file = no record found on file ' +tabLock[iWait].objectName + '; return inData.status 800');
+            tabLock[iWait].createdAt='';
+            tabLock[iWait].updatedAt='';
+            tabLock[iWait].status=800;
+          } else {
+            const createFS = stdFunctions.createRecord(fileSystem,tabLock[iWait]);
+            return({theFile:createFS, record:createFS.length-1});
+          }
+          
+      } else {
+        if (tabLock[iWait].createdAt === fileSystem[i].createdAt && tabLock[iWait].updatedAt === fileSystem[i].updatedAt){
+          if (tabLock[iWait].action==="check"){  
+            tabLock[iWait].status=810; 
+                console.log('check file = record found and locked by same user; return inData.status 810');
+            // same user is locking the file
+          } else {
+            const updatedFS=stdFunctions.updatedAt(fileSystem,iWait,i);
+            return({theFile:updatedFS, record:i});
+          }
+        } else { 
+            tabLock[iWait].status=820; 
+            console.log('check file = record found and locked by another user; return inData.status 820');
+        }
+      } 
+      return({tabLockItem:tabLock[iWait]});
+    } else {
+      console.log('wrong inData.action ==> return err-730');
+      return(730);} // wrong action
+  } else { 
+    if (tabLock[iWait].action==="lock"){
+        console.log('fileSystem' +tabLock[iWait].objectName + ' is empty; createRecord');
+        const createFS = stdFunctions.createRecord(fileSystem,tabLock[iWait]);
+        return({theFile:createFS, record:createFS.length-1});
+    } else if (tabLock[iWait].action==="check"  || tabLock[iWait].action==="check&update"){
+        if (tabLock[iWait].action==="check"){
+          console.log('check file = fileSystem ' +tabLock[iWait].objectName + 'is empty; return inData.status 800');
+          tabLock[iWait].createdAt='';
+          tabLock[iWait].updatedAt='';
+          tabLock[iWait].status=800;
+          return({tabLockItem:tabLock[iWait]});
+        } else {
+          const createFS = stdFunctions.createRecord(fileSystem,tabLock[iWait]);
+          //console.log('create record & tabLock = ' + JSON.stringify(tabLock[iWait]) );
+          return({theFile:createFS, record:createFS.length-1});
+        }
+    } else {
+      console.log('fileSystem ' +tabLock[iWait].objectName + 'is empty;');
+      return('err-0'); 
+    }
+  }
+  }
+
+
+  module.exports = {
+    onFileSystem
+  }

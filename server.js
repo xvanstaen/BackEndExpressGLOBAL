@@ -18,17 +18,53 @@ app.set('trust proxy', true);
 const initRoutes = require("./app/routes");
 initRoutes(app);
 
+const mongoConfig = require("./app/controllers/tutorial.controller.js");
 
-const myVersion="Version 28AUG2023 V0"
-app.get("/", (req, res) => {
-  res.json({ message: "GoogleCloud & MongoDB - " + myVersion + " - server.js [express node.js]." });
-});
-const port = process.env.PORT || 8080;
-app.listen(port, () => {
-  console.log(`==> Running ${myVersion} at localhost:${port}`);
-});
+mongoConfig.getConfigServer()
+.then( async (res) => {
+  console.log('in server.js - mongo DB is open ' + JSON.stringify(res));
+  if (res.status===200){
+      const configData = mongoConfig.getConfigData('prod')
+      .then( async (res) => {
+        if (res.status===200){
+          console.log('in server.js - config data is returned; status code = 200' );
+        } else {
+          console.log('in server.js - config data is not returned; status code = ' + res.status) ;
+        }
+        displayStatus(res.status);
+      })
+      .catch ((err) => {
+        console.log(' config data is not returned, err='+err);
+        displayStatus(501);
+      })
+  } else {
+    console.log(' problem to open MongoDB, err='+ res.status);
+    displayStatus(502);
+  }
+})
+.catch( (err) => {
+  console.log(' problem to open MongoDB, err='+ err);
+    displayStatus(503);
+})
 
 
+
+function displayStatus(code){
+  const myVersion="Version 04SEP2023 V0";
+  var configData = "";
+  if (code===200){
+    configData=" configData retrieved in MongoDB";
+  } else {
+    configData=" ISSUE - configData NOT retrieved in MongoDB; error code="+code;
+  }
+  app.get("/", (req, res) => {
+    res.json({ message: "GoogleCloud & MongoDB - " + myVersion + " - server.js [express node.js]." + configData});
+  });
+  const port = process.env.PORT || 8080;
+  app.listen(port, () => {
+    console.log(`==> Running ${myVersion} at localhost:${port}`);
+  });
+}
 
 
 
