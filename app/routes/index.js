@@ -37,14 +37,14 @@ let routes = (app) => {
 
 
   router.get("/onFileSystem/:projectId/:testProd/:name/:tabLock/:iWait", fileSystem.onFileSystem);
-
+  router.get("/resetFS/:projectId/:testProd/:name/:tabLock/:iWait", fileSystem.resetFS);
   
 /*============ CONFIG  =============*/
   // Retrieve configServer file
 
   //router.get("//", tutorials.getConfigServer);
   router.get("/config/:db/:testProd/:collection", tutorials.findConfig);
-
+  router.get("/resetConfig/:db/:testProd/:collection", tutorials.resetConfig);
 
 
 /*============ TUTORIALS =============*/

@@ -62,10 +62,10 @@ module.exports.getConfigServer = async function () {
     }
 }
 
-module.exports.getConfigData = async function (testProd) {
+module.exports.getConfigData = async function (testProd, searchString) {
 
-  var baseUrl = undefined;
-  var condition = baseUrl ? { baseUrl: { $regex: new RegExp(baseUrl), $options: "i" } } : {};
+  //var searchString = undefined;
+  var condition = searchString ? { bsearchString: { $regex: new RegExp(searchString), $options: "i" } } : {};
   try {
     const theValue = await Config.find(condition);
     if (theValue.length!==0){
@@ -319,30 +319,37 @@ exports.findByTitle = (req, res) => {
   });
 };
 
+exports.resetConfig = (req, res) => {
+  if ( cache.has(0)){
+    cache.set(0, "");
+    cache.set(1, "");
+  }
+  return res.status(200).send({message:"cache for configuration is reset"});
+}
+
 // Retrieve config from the database.
 // const findCollection = async (req, res) => {
 exports.findConfig = (req, res) => {
-  console.log('findCollection/configServer');
-  if ( cache.has(0)){
+  //console.log('findCollection/configServer');
+  if ( cache.has(0) && cache.get(0)!==""){
     if (req.params.testProd==='prod'){
       var configServer=cache.get(0);
     } else {
       configServer=cache.get(1);
     }
-      console.log('configServer retrieved from cache(0)');
+      //console.log('configServer retrieved from cache(0)');
       return res.send(configServer);
   } else {
         if (req.params.db!==''){
           current_dbName=req.params.db;
         }
 
-        // find by baseUrl --- could be more a general parameter containing a string
-        var baseUrl = req.query.baseUrl;
+        var searchString = req.query.searchString;
 
         db.config.collection.collectionName=req.params.collection;
         db.config.collection.name=req.params.collection;
 
-        var condition = baseUrl ? { baseUrl: { $regex: new RegExp(baseUrl), $options: "i" } } : {};
+        var condition = searchString ? { searchString: { $regex: new RegExp(searchString), $options: "i" } } : {};
 
         accessMongo().then
         (result => {

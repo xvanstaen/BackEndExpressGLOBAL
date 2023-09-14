@@ -24,7 +24,8 @@ mongoConfig.getConfigServer()
 .then( async (res) => {
   console.log('in server.js - mongo DB is open ' + JSON.stringify(res));
   if (res.status===200){
-      const configData = mongoConfig.getConfigData('prod')
+    searchString=undefined;  
+    const configData = mongoConfig.getConfigData('prod',searchString)
       .then( async (res) => {
         if (res.status===200){
           console.log('in server.js - config data is returned; status code = 200' );
@@ -34,16 +35,16 @@ mongoConfig.getConfigServer()
         displayStatus(res.status);
       })
       .catch ((err) => {
-        console.log(' config data is not returned, err='+err);
+        console.log(' ### config data is not returned, err='+err);
         displayStatus(501);
       })
   } else {
-    console.log(' problem to open MongoDB, err='+ res.status);
+    console.log(' *** problem to open MongoDB, err='+ res.status);
     displayStatus(502);
   }
 })
 .catch( (err) => {
-  console.log(' problem to open MongoDB, err='+ err);
+  console.log(' ==> problem to open MongoDB, err='+ err);
     displayStatus(503);
 })
 

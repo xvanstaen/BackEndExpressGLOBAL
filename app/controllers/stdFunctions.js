@@ -87,13 +87,6 @@ function fnAddTime(theDate, addHour, addMin){
   function validateLock(fileSystem, inData, record){
   
     const refDate = fnAddTime(fileSystem[record].updatedAt, inData.timeoutFileSystem.hh, inData.timeoutFileSystem.mn);
-    /*
-    const aDate=Date.now();
-    const theDate=new Date(aDate).toUTCString();
-    milliseconds=theDate.getUTCMilliseconds();
-    const myTime = theDate.substring(17,19)+theDate.substring(20,22)+theDate.substring(23,25);
-    const myDate = convertDate(theDate,"YYYYMMDD") + myTime;
-    */
     const myDate = defineMyDate();
     if (Number(myDate) > Number(refDate)){
         fileSystem[record].createdAt=myDate;
@@ -103,13 +96,20 @@ function fnAddTime(theDate, addHour, addMin){
         fileSystem[record].byUser=inData.user;
         fileSystem[record].userServerId=inData.userServerId;
         fileSystem[fileSystem.length-1].IpAddress=inData.IpAddress;
-        console.log('validateLock record : creacreatedAt  = ' + myDate + ' for user ' + inData.userServerId);
+        console.log('validateLock record : createdAt & updatedAt  = ' + myDate + ' for user ' + inData.userServerId);
         return(fileSystem);
     } else {
         return(300);
     }
   }
   
+  function updatedAt(fileSystem,iRecord){
+    const myDate = defineMyDate();
+    fileSystem[iRecord].updatedAt=myDate;
+    console.log('updatedAt record = ' + myDate + ' for user ' + fileSystem[iRecord].userServerId);
+    return(fileSystem);
+  }
+
   function defineMyDate(){
     const theDate=new Date();
     //const myDate=new Date(theDate).toUTCString();
@@ -159,18 +159,7 @@ function fnAddTime(theDate, addHour, addMin){
   
   }
   
-   function updatedAt(fileSystem,iRecord){
-    /*
-      const aDate=new Date();
-      const theDate=new Date(aDate).toUTCString();
-      const myTime=theDate.substring(17,19)+theDate.substring(20,22)+theDate.substring(23,25);
-      const myDate=convertDate(theDate,"YYYYMMDD") + myTime;
-      */
-      const myDate = defineMyDate();
-      fileSystem[iRecord].updatedAt=myDate;
-      console.log('updatedAt record = ' + myDate + ' for user ' + fileSystem[iRecord].userServerId);
-      return(fileSystem);
-    }
+
 
     module.exports = {
         createRecord,

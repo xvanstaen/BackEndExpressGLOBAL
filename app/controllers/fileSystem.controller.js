@@ -14,30 +14,35 @@ const https = require('https');
 const url = require('url');
 
 const nodecache = require('node-cache');
-var cache = new nodecache;
-
-var credentials='';
+var credentialCache = new nodecache;
+var fileSystemCache = new nodecache;
+//var credentials='';
 var lockFileSystem=[];
 
 const onFileSystem = async (req, res) => {
+  var credentials='';
+  
   try {
     var tabLock=JSON.parse(req.params.tabLock);
-    if ( cache.has(0)){
-        credentials=cache.get(0);
+
+    if ( credentialCache.has(0)){
+        credentials=credentialCache.get(0);
     } else {
       const theValue = await authFn.getDefaultCredentials(req.params.projectId);
       if (theValue.status === 200){
-        cache.set(0,theValue.credentials);
+        credentialCache.set(0,theValue.credentials);
         credentials=theValue.credentials;
       } 
     }
     if (credentials.userServerId===undefined || tabLock[0].credentialDate < credentials.creationDate){
+      console.log('credentials.userServerId===undefined ' + credentials.userServerId + '|| tabLock[0].credentialDate ('+tabLock[0].credentialDate+ ')< credentials.creationDate (' + credentials.creationDate + ')');
       console.log('server has been reinitialized ; restart your apps' );
       return res.send({msg: 'server has been reinitialized ; restart your apps', status:955});
     }
 
      
-      console.log('===> in updateFileSystem() for user ' + tabLock[req.params.iWait].userServerId);
+      console.log('===> in updateFileSystem() for user ' + JSON.stringify(tabLock[req.params.iWait]) );
+      console.log('lockFileSystem='+JSON.stringify(lockFileSystem));
       if (tabLock[0].action!=='onDestroy'){
         const inUse=inUseFileSystem(tabLock[req.params.iWait]);
         if (inUse.code!==0 ){
@@ -75,23 +80,50 @@ const onFileSystem = async (req, res) => {
               const [fileData] = await bucketFileSystem.file(tabLock[iWait].objectName).download();
               theStatus = checkData(JSON.parse(fileData), iWait, tabLock);
             ***/
-              const myFileSystem = await getFileSystem(req.query.bucket, req.params.projectId, tabLock[iWait].objectName);
+              var myFileSystem=[];
+              var trouve = false;
+              var tabFS=[];
+              var record=0;
+              if (fileSystemCache.has(0)){
+                  tabFS = fileSystemCache.get(0);
+                  for (record=0; record<tabFS.length && tabFS[record].fileName!==tabLock[iWait].objectName; record++){}
+                  if (record<tabFS.length) {
+                    myFileSystem = tabFS[record].content;
+                    trouve = true;
+                  } 
+              } 
+              if (trouve === false)
+              {
+                myFileSystem = await getFileSystem(req.query.bucket, req.params.projectId, tabLock[iWait].objectName);
+                const recordFS={fileName:"", content:""}
+                tabFS.push(recordFS);
+                tabFS[tabFS.length-1].fileName=tabLock[iWait].objectName;
+                tabFS[tabFS.length-1].content=myFileSystem;
+                record=tabFS.length-1;
+                fileSystemCache.set(0,tabFS);
+              }
+
               theStatus = checkData(myFileSystem, iWait, tabLock);
 
               tabLock[iWait].action='onDestroy';
               if (theStatus.theFile !== undefined){
 
-                const code = await saveFS(req.params.projectId, req.query.bucket,tabLock[iWait].objectName,JSON.stringify(theStatus.theFile),tabLock[iWait], tabInUse[iWait]);
+                const code = await saveFS(req.params.projectId, req.query.bucket,tabLock[iWait].objectName,JSON.stringify(theStatus.theFile),tabLock[iWait]);
+                tabFS[record].content=myFileSystem;
+                fileSystemCache.set(0,tabFS);
                 if (tabInUse[iWait]===0){
                   resetInUseFileSystem(tabLock[iWait]);
                   tabInUse[iWait]===1;
                 }
                 if (code===200){
-                  return res.send({tabLock:tabLock, message: tabLock[req.params.iWait].action + " is completed for user " + tabLock[req.params.iWait].userServerId, status:200});
+                  console.log('status = 200' + tabLock[req.params.iWait].action + " is completed for user " + tabLock[req.params.iWait].userServerId);
+                  //return res.send({tabLock:tabLock, message: tabLock[req.params.iWait].action + " is completed for user " + tabLock[req.params.iWait].userServerId, status:200});
                 } else if (code===201){
-                  return res.send({tabLock:tabLock, message: tabLock[req.params.iWait].action + " is completed without metadata for user " + tabLock[req.params.iWait].userServerId, status:200});
+                  console.log('status = 201' + tabLock[req.params.iWait].action + " is completed without metadata for user " + tabLock[req.params.iWait].userServerId);
+                  //return res.send({tabLock:tabLock, message: tabLock[req.params.iWait].action + " is completed without metadata for user " + tabLock[req.params.iWait].userServerId, status:200});
                 } else {
-                  return res.send({message:"after save is a failure for user " + tabLock[req.params.iWait].userServerId +  ' on action ' + tabLock[req.params.iWait].action, status:997});
+                  console.log('status = 997' + "after save is a failure for user " + tabLock[req.params.iWait].userServerId +  ' on action ' + tabLock[req.params.iWait].action);
+                  // return res.send({message:"after save is a failure for user " + tabLock[req.params.iWait].userServerId +  ' on action ' + tabLock[req.params.iWait].action, status:997});
                 }
                 
 
@@ -115,8 +147,31 @@ const onFileSystem = async (req, res) => {
             tabLock[req.params.iWait].action==='check' || tabLock[req.params.iWait].action==='check&update'
             || tabLock[req.params.iWait].action==='updatedAt' ) {
 
+
+          var myFileSystem=[];
+          var trouve = false;
+          var tabFS=[];
+          var record=0;
+          if (fileSystemCache.has(0)){
+              tabFS = fileSystemCache.get(0);
+              for (record=0; record<tabFS.length && tabFS[record].fileName!==tabLock[req.params.iWait].objectName; record++){}
+                  if (record<tabFS.length) {
+                    myFileSystem = tabFS[record].content;
+                    trouve = true;
+                  } 
+            } 
+            if (trouve === false)
+            {
+              myFileSystem = await getFileSystem(req.query.bucket, req.params.projectId, tabLock[req.params.iWait].objectName)
+              const recordFS={fileName:"", content:""}
+              tabFS.push(recordFS);
+              tabFS[tabFS.length-1].fileName=tabLock[req.params.iWait].objectName;
+              tabFS[tabFS.length-1].content=myFileSystem;
+              record=tabFS.length-1;
+              fileSystemCache.set(0,tabFS);
+            }
           // const [fileData] = await bucketFileSystem.file(tabLock[req.params.iWait].objectName).download();
-          const myFileSystem = await getFileSystem(req.query.bucket, req.params.projectId, tabLock[req.params.iWait].objectName)
+          // const myFileSystem = await getFileSystem(req.query.bucket, req.params.projectId, tabLock[req.params.iWait].objectName)
                     
           theStatus =checkData(myFileSystem, req.params.iWait, tabLock);
           if (theStatus.theFile !== undefined){
@@ -127,7 +182,12 @@ const onFileSystem = async (req, res) => {
                   tabLock[req.params.iWait].updatedAt=theStatus.theFile[theStatus.record].updatedAt;
               };
               const code = await saveFS(req.params.projectId, req.query.bucket,tabLock[req.params.iWait].objectName,JSON.stringify(theStatus.theFile),tabLock[req.params.iWait]);
-              
+              tabFS[record].content=myFileSystem;
+                fileSystemCache.set(0,tabFS);
+                if (tabInUse[req.params.iWait]===0){
+                  resetInUseFileSystem(tabLock[req.params.iWait]);
+                  tabInUse[req.params.iWait]===1;
+                }
               if (code===200){
                 return res.send({tabLock:tabLock, message: tabLock[req.params.iWait].action + " is completed for user " + tabLock[req.params.iWait].userServerId, status:200});
               } else if (code===201){
@@ -136,10 +196,10 @@ const onFileSystem = async (req, res) => {
                 return res.send({message:"after save is a failure for user " + tabLock[req.params.iWait].userServerId +  ' on action ' + tabLock[req.params.iWait].action, status:997});
               }
 
-        } else {
+        } else { // error code is returned
           resetInUseFileSystem(tabLock[req.params.iWait]);
-          console.log("pb with " + tabLock[req.params.iWait].action + " for user " + tabLock[req.params.iWait].userServerId)
-          return res.send({message:"pb with " + tabLock[req.params.iWait].action + " for user " + tabLock[req.params.iWait].userServerId, status:theStatus});
+          console.log("Code " + theStatus + '  returned for action = ' + tabLock[req.params.iWait].action + " for user " + tabLock[req.params.iWait].userServerId)
+          return res.send({message:"Code " + theStatus + '  returned for action = ' + tabLock[req.params.iWait].action + " for user " + tabLock[req.params.iWait].userServerId , status:theStatus});
         }
 
       } else {
@@ -164,6 +224,33 @@ const onFileSystem = async (req, res) => {
   } 
 };
 
+const resetFS= async (req, res) => {
+
+  // *** how to manage several records within one file system? Can it happen?
+  var tabLock=JSON.parse(req.params.tabLock);
+  var myFileSystem=[];
+  var tabFS=[];
+  var record=0;
+  const inUse=inUseFileSystem(tabLock[req.params.iWait]);
+  if (fileSystemCache.has(0)){
+      tabFS = fileSystemCache.get(0);
+      for (record=0; record<tabFS.length && tabFS[record].fileName!==req.params.name; record++){}
+      if (record<tabFS.length) {
+          tabFS[record].content=[];
+          fileSystemCache.set(0,tabFS);
+          myFileSystem = tabFS[record].content;
+          const code = await saveFS(req.params.projectId, req.query.bucket,req.params.name,JSON.stringify(myFileSystem),tabLock[req.params.iWait]);
+          if (code===200){
+            return res.status(200).send({message:'file system ' + req.params.name + ' has been reset, file saved with metadata'});
+          } else if (code===201){
+            return res.status(201).send({message:'file system ' + req.params.name + ' has been reset, file saved but metaData not updated'});
+          } else {
+            return res.status(997).send({message:'file system memoty has been reset but file was not saved'});
+          }
+          
+      } 
+  } 
+}
 
 function inUseFileSystem(tablockItem){
 
@@ -228,26 +315,22 @@ function resetInUseFileSystem(tablockItem){
 
 async function saveFS(projectId, bucket,object,fileContent,tablockItem){
   const storage = await authFn.getClient(projectId);
-  const bucketFileSystem = storage.bucket(bucket);
+  var bucketFileSystem = storage.bucket(bucket);
   bucketFileSystem.projectId=projectId;
   bucketFileSystem.id=bucket;
   bucketFileSystem.name=bucket;
   await bucketFileSystem.file(object).save(fileContent);
   try{
     const storage = await authFn.getClient(projectId);
-    const bucketFileSystem = storage.bucket(bucket);
-    bucketFileSystem.projectId=projectId;
-    bucketFileSystem.id=bucket;
-    bucketFileSystem.name=bucket;
+    var bucketMetaFS = storage.bucket(bucket);
+    bucketMetaFS.projectId=projectId;
+    bucketMetaFS.id=bucket;
+    bucketMetaFS.name=bucket;
     const newMetadata = {
       cacheControl: 'public,max-age=0,no-cache,no-store',
       contentType: 'application/json'
     };
-      //const bucketFileSystem = storage.bucket(req.query.bucket);
-      //bucketFileSystem.projectId=req.params.projectId;
-      //bucketFileSystem.id=req.query.bucket;
-      //bucketFileSystem.name=req.query.bucket;
-      await bucketFileSystem.file(object).setMetadata(newMetadata);
+      await bucketMetaFS.file(object).setMetadata(newMetadata);
       try{
         if (tablockItem.action!=='onDestroy'){
           resetInUseFileSystem(tablockItem);
@@ -292,7 +375,7 @@ async function getFileSystem(theBucket, projectId, fileName){
     */
 
     const storage = await authFn.getClient(projectId);
-    const bucket = storage.bucket(theBucket);
+    var bucket = storage.bucket(theBucket);
     bucket.projectId=projectId;
     const [fileData] = await bucket.file(fileName).download();
     return (JSON.parse(fileData));
@@ -314,13 +397,23 @@ function checkData(fileSystem, iWait, tabLock){
             const createFS = stdFunctions.createRecord(fileSystem,tabLock[iWait]);
             return({theFile:createFS, record:createFS.length-1});
         } else { // record already exists and already locked
-            console.log('record in file system ' + JSON.stringify(fileSystem[i]) + ' already exists and is locked - Error 300');
-            // check wheter it has been locked form more than 1 hour
+            console.log('record in file system ' + JSON.stringify(fileSystem[i]) + ' already exists and is locked - Error 300; run validateLock()');
+            console.log('tabLock[iWait]='+JSON.stringify(tabLock[iWait])); // check wheter it has been locked form more than 1 hour
             // if yes then lock it for this user
-            const validate=stdFunctions.validateLock(fileSystem,tabLock[iWait],i);
-            if (typeof validate === 'object') {
-              return({theFile:validate, record:i});
-            } else {return(validate)};
+            if (fileSystem[i].createdAt === tabLock[iWait].createdAt && 
+              fileSystem[i].updatedAt === tabLock[iWait].updatedAt &&
+              fileSystem[i].userServerId === tabLock[iWait].userServerId 
+              ){
+                const updatedFS=stdFunctions.updatedAt(fileSystem,iWait,i);
+                return({theFile:updatedFS, record:i});
+              } else {
+                const validate=stdFunctions.validateLock(fileSystem,tabLock[iWait],i);
+                if (typeof validate === 'object') {
+                  console.log('record is unlocked by validateLock')
+                  return({theFile:validate, record:i});
+                } else {return(validate)};
+              }
+            
             
         }
     } else if (tabLock[iWait].action==="unlock"){
@@ -404,5 +497,6 @@ function checkData(fileSystem, iWait, tabLock){
 
 
   module.exports = {
-    onFileSystem
+    onFileSystem,
+    resetFS
   }

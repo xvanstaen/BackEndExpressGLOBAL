@@ -63,10 +63,10 @@ async function cacheFiles(testProd,fileName){
 const resetCacheFile = async (req, res) => {
   if (tabFile.has(0)){
     var listFiles=[];
-    cache.clear(0);
     listFiles = tabFile.get(0);
     for (i=0; i<listFiles.length && fileName!==listFiles[i].file; i++){
       listFiles[i].updated=true;
+      cache.set(i, []);
     }
   }
   return res.status(200).send('cache for files is reset');
@@ -82,7 +82,7 @@ const getFileContent = async (req, res) => {
         res.status(200).send(cache.get(i));
     } else {
       const storage = await authFn.getClient(req.params.projectId);
-      const bucket = storage.bucket(req.query.bucket);
+      var bucket = storage.bucket(req.query.bucket);
       bucket.projectId=req.params.projectId;
   
       /**
@@ -121,7 +121,7 @@ var bucketLogin='manage-login';
 
 async function getUserPswRecord(projectId, userId){
   const storage = await authFn.getClient(projectId);
-  const bucket = storage.bucket(bucketLogin);
+  var bucket = storage.bucket(bucketLogin);
   bucket.projectId=projectId;
 
   const [downloadFile] = await bucket.file(userId+'PSW.json').download();
@@ -139,7 +139,7 @@ const  checkLogin = async (req, res) => {
       res.status(700).send({error:"invalid request"});
     } else {
       const storage = await authFn.getClient(req.params.projectId);
-      const bucket = storage.bucket(myDecrypt.bucketUserInfo);
+      var bucket = storage.bucket(myDecrypt.bucketUserInfo);
       bucket.projectId=req.params.projectId;
       const [downloadFile] = await bucket.file(req.params.userId+'.json').download();
       res.status(200).send(JSON.parse(downloadFile));
@@ -157,7 +157,7 @@ const upload =async (req, res) => {
     //console.log(' ===> upload');
     const storage = await authFn.getClient(req.params.projectId);
    
-    const bucket = storage.bucket(req.query.bucket);
+    var bucket = storage.bucket(req.query.bucket);
     bucket.projectId=req.params.projectId;
     enableUniformBucketLevelAccess(req.query.bucket, storage);
     
@@ -232,7 +232,7 @@ const upload =async (req, res) => {
 
 const updateMeta = async (req, res) => {
   const storage = await authFn.getClient(req.params.projectId);
-  const bucket = storage.bucket(req.query.bucket);
+  var bucket = storage.bucket(req.query.bucket);
   bucket.projectId=req.params.projectId;
 
   try {
@@ -250,7 +250,7 @@ const getListFiles = async (req, res) => {
   try {
     const storage = await authFn.getClient(req.params.projectId);
    
-    const bucket = storage.bucket(req.query.bucket);
+    var bucket = storage.bucket(req.query.bucket);
     bucket.projectId=req.params.projectId;
     const [files] = await bucket.getFiles();
     let fileInfos = [];
@@ -272,7 +272,7 @@ const getListMetaDataFiles = async (req, res) => {
   try {
     const storage = await authFn.getClient(req.params.projectId);
    
-    const bucket = storage.bucket(req.query.bucket);
+    var bucket = storage.bucket(req.query.bucket);
     bucket.projectId=req.params.projectId;
     const [files] = await bucket.getFiles();
     let fileInfos = [];
@@ -296,7 +296,7 @@ const getListMetaDataFiles = async (req, res) => {
 const getObjectMeta = async (req, res) => {
   try {
     const storage = await authFn.getClient(req.params.projectId);
-    const bucket = storage.bucket(req.query.bucket);
+    var bucket = storage.bucket(req.query.bucket);
     bucket.projectId=req.params.projectId;
     const [metaData] = await bucket.file(req.params.name).getMetadata();
     res.status(200).send(metaData);
@@ -330,7 +330,7 @@ const listBuckets = async (req, res) => {
 const copyObject = async (req, res) => {
   try {
     const storage = await authFn.getClient(req.params.projectId);
-    const bucket = storage.bucket(req.query.bucket);
+    var bucket = storage.bucket(req.query.bucket);
     bucket.projectId=req.params.projectId;
     await bucket.file(req.params.SRCname)
     .copy(storage.bucket(req.params.DESTbucket).file(req.params.DESTname));
@@ -367,7 +367,7 @@ const moveObject = async (req, res) => {
 const renameObject = async (req, res) => {
   try {
     const storage = await authFn.getClient(req.params.projectId);
-    const bucket = storage.bucket(req.query.bucket);
+    var bucket = storage.bucket(req.query.bucket);
     bucket.projectId=req.params.projectId;
     await bucket.file(req.params.SRCname)
     .rename(req.params.DESTname);
@@ -384,7 +384,7 @@ const renameObject = async (req, res) => {
 const deleteObject = async (req, res) => {
   try {
     const storage = await authFn.getClient(req.params.projectId);
-    const bucket = storage.bucket(req.query.bucket);
+    var bucket = storage.bucket(req.query.bucket);
     bucket.projectId=req.params.projectId;
     await bucket.file(req.params.name).delete();
     res.status(200).send({message: "Object is deleted"});
