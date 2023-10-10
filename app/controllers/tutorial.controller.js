@@ -16,6 +16,7 @@ const dbConfig = require("../config/db.config.js"); // contains the mongodb url
 
 
 const mongoose = require("mongoose");
+mongoose.set('strictQuery', false);
 mongoose.Promise = global.Promise;
 const db = {};
 db.url = dbConfig.url;

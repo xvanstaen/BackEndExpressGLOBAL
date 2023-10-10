@@ -154,7 +154,7 @@ function fnAddTime(theDate, addHour, addMin){
     }
   
   
-    return (year+theMonth+theDay+theHour+theMinutes+theSeconds+theMilliseconds);
+    return (year.toString()+theMonth+theDay+theHour+theMinutes+theSeconds+theMilliseconds);
   
   
   }

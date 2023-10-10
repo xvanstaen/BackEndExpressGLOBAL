@@ -212,17 +212,18 @@ const upload =async (req, res) => {
         }
          */
 
-        res.status(200).send({
-          message: "Uploaded the file successfully: " + req.file.originalname
-        });
+
         const theValue=await cacheFiles(req.params.testProd, req.params.name);
         var listFiles=theValue.tab;
         const i = theValue.record;
-        if (i<listFiles.length  && (cache.get(i)) ) {
+        if (i<listFiles.length  && listFiles[i].file === req.params.name) {
             console.log('flag field updated to true for file ' + req.params.name + ' in cache nb' + i);
-            listFiles[i].updated===true;
+            listFiles[i].updated=true;
+            tabFile.set(0, listFiles);
         }
-
+        res.status(200).send({
+          message: "Uploaded the file successfully: " + req.file.originalname
+        });
     });
     blobStream.end(req.file.buffer);
   } catch (err) {

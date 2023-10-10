@@ -9,7 +9,7 @@ const authFn =  require("../controllers/authFn.js");
 const cryptoFn =  require("../controllers/cryptoFn.js");
 
 let routes = (app) => {
-  router.post("/upload/:projectId/:testProd/:cacheControl/:contentType", controller.upload);
+  router.post("/upload/:projectId/:name/:testProd/:cacheControl/:contentType", controller.upload);
   router.post("/updateMeta/:projectId/:testProd/:name/:newMetaData", controller.updateMeta);
   router.get("/listFiles/:projectId/:testProd", controller.getListFiles);
   router.get("/filesmeta/:projectId/:testProd", controller.getListMetaDataFiles);
