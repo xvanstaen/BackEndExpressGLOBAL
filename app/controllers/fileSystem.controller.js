@@ -453,7 +453,7 @@ function checkData(fileSystem, iWait, tabLock){
           }
           
       } else {
-        if (tabLock[iWait].createdAt === fileSystem[i].createdAt && tabLock[iWait].updatedAt === fileSystem[i].updatedAt){
+        if (tabLock[iWait].createdAt === fileSystem[i].createdAt && tabLock[iWait].userServerId === fileSystem[i].userServerId){
           if (tabLock[iWait].action==="check"){  
             tabLock[iWait].status=810; 
                 console.log('check file = record found and locked by same user; return inData.status 810');
@@ -465,7 +465,10 @@ function checkData(fileSystem, iWait, tabLock){
         } else { 
             tabLock[iWait].status=820; 
             console.log('check file = record found and locked by another user; return inData.status 820');
-        }
+            console.log('file system record is :', JSON.stringify(fileSystem));
+            console.log('tablock ['+iWait+"] is :", JSON.stringify(tabLock[iWait]));
+            console.log('----------------------------------------------');
+          }
       } 
       return({tabLockItem:tabLock[iWait]});
     } else {

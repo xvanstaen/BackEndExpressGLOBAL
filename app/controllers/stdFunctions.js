@@ -153,7 +153,8 @@ function fnAddTime(theDate, addHour, addMin){
       theMilliseconds=milliseconds;
     }
   
-  
+    const laDate=year.toString()+theMonth+theDay+theHour+theMinutes+theSeconds+theMilliseconds;
+
     return (year.toString()+theMonth+theDay+theHour+theMinutes+theSeconds+theMilliseconds);
   
   
