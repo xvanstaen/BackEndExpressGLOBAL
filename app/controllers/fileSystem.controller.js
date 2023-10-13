@@ -35,9 +35,9 @@ const onFileSystem = async (req, res) => {
       } 
     }
     if (credentials.userServerId===undefined || tabLock[0].credentialDate < credentials.creationDate){
-      console.log('credentials.userServerId===undefined ' + credentials.userServerId + '|| tabLock[0].credentialDate ('+tabLock[0].credentialDate+ ')< credentials.creationDate (' + credentials.creationDate + ')');
-      console.log('server has been reinitialized ; restart your apps' );
-      return res.send({msg: 'server has been reinitialized ; restart your apps', status:955});
+      const theMsg='credentials.userServerId===undefined ' + credentials.userServerId + '|| tabLock[0].credentialDate ('+tabLock[0].credentialDate+ ')< credentials.creationDate (' + credentials.creationDate + ');  server has been reinitialized ; restart your apps' 
+      console.log(theMsg);
+      return res.send({msg: theMsg, status:955});
     }
 
      
@@ -474,7 +474,7 @@ function checkData(fileSystem, iWait, tabLock){
     } else {
       console.log('wrong inData.action ==> return err-730');
       return(730);} // wrong action
-  } else { 
+  } else { // file system is empty
     if (tabLock[iWait].action==="lock"){
         console.log('fileSystem' +tabLock[iWait].objectName + ' is empty; createRecord');
         const createFS = stdFunctions.createRecord(fileSystem,tabLock[iWait]);
@@ -492,7 +492,7 @@ function checkData(fileSystem, iWait, tabLock){
           return({theFile:createFS, record:createFS.length-1});
         }
     } else {
-      console.log('fileSystem ' +tabLock[iWait].objectName + 'is empty;');
+      console.log('fileSystem ' + tabLock[iWait].objectName + 'is empty; no action taken on ' + tabLock[iWait].action);
       return('err-0'); 
     }
   }
