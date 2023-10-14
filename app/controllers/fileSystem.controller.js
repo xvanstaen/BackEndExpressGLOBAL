@@ -38,6 +38,7 @@ const onFileSystem = async (req, res) => {
       const theMsg='credentials.userServerId===undefined ' + credentials.userServerId + '|| tabLock[0].credentialDate ('+tabLock[0].credentialDate+ ')< credentials.creationDate (' + credentials.creationDate + ');  server has been reinitialized ; restart your apps' 
       console.log(theMsg);
       return res.send({msg: theMsg, status:955});
+      // reset file systems **************
     }
 
      
@@ -103,7 +104,7 @@ const onFileSystem = async (req, res) => {
                 fileSystemCache.set(0,tabFS);
               }
 
-              theStatus = checkData(myFileSystem, iWait, tabLock);
+              theStatus = checkData(myFileSystem, iWait, tabLock, credentials.Date);
 
               tabLock[iWait].action='onDestroy';
               if (theStatus.theFile !== undefined){
@@ -173,7 +174,8 @@ const onFileSystem = async (req, res) => {
           // const [fileData] = await bucketFileSystem.file(tabLock[req.params.iWait].objectName).download();
           // const myFileSystem = await getFileSystem(req.query.bucket, req.params.projectId, tabLock[req.params.iWait].objectName)
                     
-          theStatus =checkData(myFileSystem, req.params.iWait, tabLock);
+          theStatus =checkData(myFileSystem, req.params.iWait, tabLock, credentials.Date);
+
           if (theStatus.theFile !== undefined){
              
               if (theStatus.record !== undefined && tabLock[req.params.iWait].action==='lock' || tabLock[req.params.iWait].action==='check&update' || tabLock[req.params.iWait].action==='updatedAt'){
@@ -387,26 +389,31 @@ async function getFileSystem(theBucket, projectId, fileName){
 }
 
 
-function checkData(fileSystem, iWait, tabLock){
+function checkData(fileSystem, iWait, tabLock, credentialDate){
   //console.log('start checkData');
   if (fileSystem.length > 0 ){
     for (var i=0; i<fileSystem.length && (fileSystem[i].object!==tabLock[iWait].object || fileSystem[i].bucket!==tabLock[iWait].bucket); i++){}
     if (tabLock[iWait].action==="lock"){
         if (i===fileSystem. length ){
-            // record is not locked so create a new record and flag lock to true
+            // record not found so create a new record and flag lock to true
             const createFS = stdFunctions.createRecord(fileSystem,tabLock[iWait]);
             return({theFile:createFS, record:createFS.length-1});
-        } else { // record already exists and already locked
-            console.log('record in file system ' + JSON.stringify(fileSystem[i]) + ' already exists and is locked - Error 300; run validateLock()');
-            console.log('tabLock[iWait]='+JSON.stringify(tabLock[iWait])); // check wheter it has been locked form more than 1 hour
-            // if yes then lock it for this user
-            if (fileSystem[i].createdAt === tabLock[iWait].createdAt && 
+        } else { // record already exists ; check if already locked and by whom
+            
+            console.log('tabLock[iWait]='+JSON.stringify(tabLock[iWait]));
+            if (fileSystem[i].credentialDate!==credentialDate){
+              fileSystem.splice(i,1); // delete the reord and create a new one
+              const createFS = stdFunctions.createRecord(fileSystem,tabLock[iWait]);
+              return({theFile:createFS, record:createFS.length-1});
+            }
+             else if (fileSystem[i].createdAt === tabLock[iWait].createdAt && 
               fileSystem[i].updatedAt === tabLock[iWait].updatedAt &&
-              fileSystem[i].userServerId === tabLock[iWait].userServerId 
+              fileSystem[i].userServerId === tabLock[iWait].userServerId // file is already locked by same user
               ){
                 const updatedFS=stdFunctions.updatedAt(fileSystem,iWait,i);
                 return({theFile:updatedFS, record:i});
               } else {
+                console.log('record in file system ' + JSON.stringify(fileSystem[i]) + ' already exists and is locked - Error 300; run validateLock()');
                 const validate=stdFunctions.validateLock(fileSystem,tabLock[iWait],i);
                 if (typeof validate === 'object') {
                   console.log('record is unlocked by validateLock')
