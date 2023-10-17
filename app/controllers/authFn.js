@@ -71,6 +71,7 @@ async function getDefaultCredentials(projectId){
             , refresh_token:client.credentials.refresh_token, token_type:client.credentials.token_type, userServerId:0, creationDate:myDate}
   
           cache.set(0, credentials)
+          console.log('credentials.creationDate = ' + credentials.creationDate);
       }
       /**
       if ( cache.has(0)){

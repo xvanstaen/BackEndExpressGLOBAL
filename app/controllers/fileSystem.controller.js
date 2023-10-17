@@ -19,9 +19,10 @@ var fileSystemCache = new nodecache;
 //var credentials='';
 var lockFileSystem=[];
 
+
 const onFileSystem = async (req, res) => {
   var credentials='';
-  
+  var myFileSystem=[];
   try {
     var tabLock=JSON.parse(req.params.tabLock);
 
@@ -34,14 +35,33 @@ const onFileSystem = async (req, res) => {
         credentials=theValue.credentials;
       } 
     }
-    if (credentials.userServerId===undefined || tabLock[0].credentialDate < credentials.creationDate){
-      const theMsg='credentials.userServerId===undefined ' + credentials.userServerId + '|| tabLock[0].credentialDate ('+tabLock[0].credentialDate+ ')< credentials.creationDate (' + credentials.creationDate + ');  server has been reinitialized ; restart your apps' 
-      console.log(theMsg);
-      return res.send({msg: theMsg, status:955});
-      // reset file systems **************
-    }
+    if (credentials.userServerId===undefined || tabLock[0].credentialDate !== credentials.creationDate){
+      myFileSystem = await getFileSystem(req.query.bucket, req.params.projectId, tabLock[req.params.iWait].objectName);
+      for (var i=0; i< myFileSystem.length && ( myFileSystem[i].object!==tabLock[req.params.iWait].object ||  myFileSystem[i].bucket!==tabLock[req.params.iWait].bucket); i++){}
+      if (i< myFileSystem.length && myFileSystem[i].createdAt === tabLock[req.params.iWait].createdAt && 
+          myFileSystem[i].updatedAt === tabLock[req.params.iWait].updatedAt &&
+          myFileSystem[i].userServerId === tabLock[req.params.iWait].userServerId && 
+          myFileSystem[i].credentialDate === tabLock[req.params.iWait].credentialDate  ){
+          tabLock[req.params.iWait].credentialDate=credentials.creationDate;
+          tabLock[req.params.iWait].userServerId=credentials.userServerId;
 
-     
+          // last update was performed by same user
+          myFileSystem.splice(i,0);
+          const code = await saveFS(req.params.projectId, req.query.bucket,tabLock[req.params.iWait].objectName,JSON.stringify(myFileSystem),tabLock[req.params.iWait]);
+          console.log('server was reset and same user re-accesses the file');
+          }
+        else if (i< myFileSystem.length && myFileSystem[i].credentialDate === credentials.creationDate) {
+          const theMsg='server was reset and file is locked by another user';
+          console.log(theMsg);
+          return res.send({msg: theMsg, status:956});   
+        } else {
+          const theMsg=' credentials.userServerId = ' + credentials.userServerId + '|| tabLock[0].credentialDate ('+tabLock[0].credentialDate+ ')< credentials.creationDate (' + credentials.creationDate + ');  server has been reinitialized ; restart your apps' 
+          console.log(theMsg);
+          return res.send({msg: theMsg, status:955});       
+        }
+      }
+
+      
       console.log('===> in updateFileSystem() for user ' + JSON.stringify(tabLock[req.params.iWait]) );
       console.log('lockFileSystem='+JSON.stringify(lockFileSystem));
       if (tabLock[0].action!=='onDestroy'){
@@ -81,7 +101,7 @@ const onFileSystem = async (req, res) => {
               const [fileData] = await bucketFileSystem.file(tabLock[iWait].objectName).download();
               theStatus = checkData(JSON.parse(fileData), iWait, tabLock);
             ***/
-              var myFileSystem=[];
+              
               var trouve = false;
               var tabFS=[];
               var record=0;
@@ -104,7 +124,7 @@ const onFileSystem = async (req, res) => {
                 fileSystemCache.set(0,tabFS);
               }
 
-              theStatus = checkData(myFileSystem, iWait, tabLock, credentials.Date);
+              theStatus = checkData(myFileSystem, iWait, tabLock, credentials.creationDate);
 
               tabLock[iWait].action='onDestroy';
               if (theStatus.theFile !== undefined){
@@ -174,7 +194,7 @@ const onFileSystem = async (req, res) => {
           // const [fileData] = await bucketFileSystem.file(tabLock[req.params.iWait].objectName).download();
           // const myFileSystem = await getFileSystem(req.query.bucket, req.params.projectId, tabLock[req.params.iWait].objectName)
                     
-          theStatus =checkData(myFileSystem, req.params.iWait, tabLock, credentials.Date);
+          theStatus =checkData(myFileSystem, req.params.iWait, tabLock, credentials.creationDate);
 
           if (theStatus.theFile !== undefined){
              
@@ -388,11 +408,16 @@ async function getFileSystem(theBucket, projectId, fileName){
   }  
 }
 
-
 function checkData(fileSystem, iWait, tabLock, credentialDate){
   //console.log('start checkData');
   if (fileSystem.length > 0 ){
     for (var i=0; i<fileSystem.length && (fileSystem[i].object!==tabLock[iWait].object || fileSystem[i].bucket!==tabLock[iWait].bucket); i++){}
+    if (fileSystem[i].credentialDate!==credentialDate){ // server was reinitiated
+      // HOWEVER, WHO WAS THE LAST USER WHO UPDATED THE FILE?????
+      fileSystem.splice(i,1); // delete the record and create a new one
+      const createFS = stdFunctions.createRecord(fileSystem,tabLock[iWait]);
+      return({theFile:createFS, record:createFS.length-1});
+    }
     if (tabLock[iWait].action==="lock"){
         if (i===fileSystem. length ){
             // record not found so create a new record and flag lock to true
@@ -401,12 +426,8 @@ function checkData(fileSystem, iWait, tabLock, credentialDate){
         } else { // record already exists ; check if already locked and by whom
             
             console.log('tabLock[iWait]='+JSON.stringify(tabLock[iWait]));
-            if (fileSystem[i].credentialDate!==credentialDate){
-              fileSystem.splice(i,1); // delete the reord and create a new one
-              const createFS = stdFunctions.createRecord(fileSystem,tabLock[iWait]);
-              return({theFile:createFS, record:createFS.length-1});
-            }
-             else if (fileSystem[i].createdAt === tabLock[iWait].createdAt && 
+            
+             if (fileSystem[i].createdAt === tabLock[iWait].createdAt && 
               fileSystem[i].updatedAt === tabLock[iWait].updatedAt &&
               fileSystem[i].userServerId === tabLock[iWait].userServerId // file is already locked by same user
               ){

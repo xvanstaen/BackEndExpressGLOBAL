@@ -51,7 +51,7 @@ mongoConfig.getConfigServer()
 
 
 function displayStatus(code){
-  const myVersion="Version 13Oct2023 V0";
+  const myVersion="Version 17Oct2023 V0";
   var configData = "";
   if (code===200){
     configData=" configData retrieved in MongoDB";
