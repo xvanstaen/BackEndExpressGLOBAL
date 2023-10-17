@@ -231,7 +231,7 @@ const onFileSystem = async (req, res) => {
     }
   catch (err) {
     const tabLock=JSON.parse(req.params.tabLock);
-    if (tabLock[0].action='onDestroy'){
+    if (tabLock[0].action==='onDestroy'){
       for (var iWait=0; iWait<tabLock.length; iWait++){
         if (tabLock[iWait].lock===1){
           tabLock[iWait].action='onDestroy';

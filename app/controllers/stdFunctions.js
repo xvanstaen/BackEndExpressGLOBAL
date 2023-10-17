@@ -105,7 +105,7 @@ function fnAddTime(theDate, addHour, addMin){
     }
   }
   
-  function updatedAt(fileSystem,iRecord){
+  function updatedAt(fileSystem, iwait, iRecord){
     const myDate = defineMyDate();
     fileSystem[iRecord].updatedAt=myDate;
     console.log('updatedAt record = ' + myDate + ' for user ' + fileSystem[iRecord].userServerId);
@@ -155,7 +155,7 @@ function fnAddTime(theDate, addHour, addMin){
       theMilliseconds=milliseconds;
     }
   
-    const laDate=year.toString()+theMonth+theDay+theHour+theMinutes+theSeconds+theMilliseconds;
+    // const laDate=year.toString()+theMonth+theDay+theHour+theMinutes+theSeconds+theMilliseconds;
 
     return (year.toString()+theMonth+theDay+theHour+theMinutes+theSeconds+theMilliseconds);
   
