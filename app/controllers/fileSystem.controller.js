@@ -91,17 +91,7 @@ const onFileSystem = async (req, res) => {
               
           if (tabLock[iWait].lock===1 ){
               console.log('onDestroy - userServerId ' + tabLock[iWait].userServerId + ' bucket=' + tabLock[iWait].bucket + '  object=' + tabLock[iWait].object + ' file system=' + tabLock[iWait].objectName);
-              tabLock[iWait].action='unlock';
-            /***
-              const storage = await authFn.getClient(projectId);
-              const bucketFileSystem = storage.bucket(req.query.bucket);
-              bucketFileSystem.projectId=req.params.projectId;
-              bucketFileSystem.id=req.query.bucket;
-              bucketFileSystem.name=req.query.bucket;
-              const [fileData] = await bucketFileSystem.file(tabLock[iWait].objectName).download();
-              theStatus = checkData(JSON.parse(fileData), iWait, tabLock);
-            ***/
-              
+              tabLock[iWait].action='unlock';              
               var trouve = false;
               var tabFS=[];
               var record=0;
@@ -202,6 +192,8 @@ const onFileSystem = async (req, res) => {
                   tabLock[req.params.iWait].lock=1;
                   tabLock[req.params.iWait].createdAt=theStatus.theFile[theStatus.record].createdAt;
                   tabLock[req.params.iWait].updatedAt=theStatus.theFile[theStatus.record].updatedAt;
+              } else  if (tabLock[req.params.iWait].action==='unlock'){
+                  tabLock[req.params.iWait].lock=3;
               };
               const code = await saveFS(req.params.projectId, req.query.bucket,tabLock[req.params.iWait].objectName,JSON.stringify(theStatus.theFile),tabLock[req.params.iWait]);
               tabFS[record].content=myFileSystem;
@@ -413,7 +405,7 @@ function checkData(fileSystem, iWait, tabLock, credentialDate){
   if (fileSystem.length > 0 ){
     for (var i=0; i<fileSystem.length && (fileSystem[i].object!==tabLock[iWait].object || fileSystem[i].bucket!==tabLock[iWait].bucket); i++){}
     if (fileSystem[i].credentialDate!==credentialDate){ // server was reinitiated
-      // HOWEVER, WHO WAS THE LAST USER WHO UPDATED THE FILE?????
+      
       fileSystem.splice(i,1); // delete the record and create a new one
       const createFS = stdFunctions.createRecord(fileSystem,tabLock[iWait]);
       return({theFile:createFS, record:createFS.length-1});
