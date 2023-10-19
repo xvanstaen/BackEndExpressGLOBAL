@@ -21,7 +21,9 @@ let routes = (app) => {
   router.get("/move/:projectId/:testProd/:DESTbucket/:SRCname/:DESTname", controller.moveObject);
   router.get("/copy/:projectId/:testProd/:DESTbucket/:SRCname/:DESTname", controller.copyObject);
 
-  router.get("/resetCacheFile/:projectId/:testProd", controller.resetCacheFile);
+  router.get("/resetCacheFile/:projectId/:testProd/:fileName", controller.resetCacheFile);
+  router.get("/getCacheFile/:projectId/:testProd", controller.getCacheFile);
+  router.get("/reloadCacheFile/:projectId/:testProd", controller.reloadCacheFile);
 
   router.get("/checkLogin/:projectId/:testProd/:userId/:psw/", controller.checkLogin);
 
@@ -38,6 +40,7 @@ let routes = (app) => {
 
   router.get("/onFileSystem/:projectId/:testProd/:name/:tabLock/:iWait", fileSystem.onFileSystem);
   router.get("/resetFS/:projectId/:testProd/:name/:tabLock/:iWait", fileSystem.resetFS);
+  router.get("/memoryFS/:projectId/:testProd", fileSystem.getMemoryFS);
   
 /*============ CONFIG  =============*/
   // Retrieve configServer file

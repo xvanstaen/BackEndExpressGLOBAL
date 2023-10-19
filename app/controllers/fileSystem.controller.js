@@ -238,32 +238,68 @@ const onFileSystem = async (req, res) => {
   } 
 };
 
+const getMemoryFS= async (req, res) => {
+  var tabFS=[];
+  if (fileSystemCache.has(0)){
+    tabFS = fileSystemCache.get(0);
+  } 
+  return res.send({status:0, data:tabFS})
+}
+
 const resetFS= async (req, res) => {
 
   // *** how to manage several records within one file system? Can it happen?
   var tabLock=JSON.parse(req.params.tabLock);
   var myFileSystem=[];
   var tabFS=[];
+  var newTabFS=[];
   var record=0;
-  const inUse=inUseFileSystem(tabLock[req.params.iWait]);
+  // const inUse=inUseFileSystem(tabLock[req.params.iWait]);
   if (fileSystemCache.has(0)){
-      tabFS = fileSystemCache.get(0);
-      for (record=0; record<tabFS.length && tabFS[record].fileName!==req.params.name; record++){}
-      if (record<tabFS.length) {
-          tabFS[record].content=[];
-          fileSystemCache.set(0,tabFS);
-          myFileSystem = tabFS[record].content;
-          const code = await saveFS(req.params.projectId, req.query.bucket,req.params.name,JSON.stringify(myFileSystem),tabLock[req.params.iWait]);
-          if (code===200){
-            return res.status(200).send({message:'file system ' + req.params.name + ' has been reset, file saved with metadata'});
-          } else if (code===201){
-            return res.status(201).send({message:'file system ' + req.params.name + ' has been reset, file saved but metaData not updated'});
-          } else {
-            return res.status(997).send({message:'file system memoty has been reset but file was not saved'});
+    tabFS = fileSystemCache.get(0);
+    for (record=0; record<tabFS.length && tabFS[record].fileName!==tabLock[req.params.iWait].objectName; record++){}
+    if (record<tabFS.length) {
+        tabFS[record].content=[];
+        var j=-1;
+        for (var i=0; i<tabFS.length; i++){
+          if (i!==record){
+            j++
+            newTabFS[j]=tabFS[i];
           }
-          
+        }
+        fileSystemCache.set(0,newTabFS);
       } 
-  } 
+    } 
+  if (tabLock[req.params.iWait].action==="resetAll"){
+      fileSystemCache.set(0,newTabFS);
+      const code = await saveFS(req.params.projectId, req.query.bucket,tabLock[req.params.iWait].objectName,JSON.stringify(myFileSystem),tabLock[req.params.iWait]);
+      if (code===200){
+            return res.status(200).send({status:200, message:'file system ' + req.params.name + ' has been reset and file saved with metadata'});
+        } else if (code===201){
+            return res.status(201).send({status:201,message:'file system ' + req.params.name + ' has been resetand file is saved but metaData not updated'});
+        } else {
+            return res.status(202).send({status:202,message:'file system memory has been reset but file could not be saved'});
+        }
+  }
+
+       // myFileSystem = tabFS[record].content
+      myFileSystem = await getFileSystem(req.query.bucket, req.params.projectId, tabLock[req.params.iWait].objectName);
+      for (record=0; record<myFileSystem.length && myFileSystem[record].object!==tabLock[req.params.iWait].object; record++){}
+      if (record<myFileSystem.length) {
+          myFileSystem.splice(record,1);
+          const code = await saveFS(req.params.projectId, req.query.bucket,tabLock[req.params.iWait].objectName,JSON.stringify(myFileSystem),tabLock[req.params.iWait]);
+          if (code===200){
+            return res.status(200).send({status:200,message:'file system ' + req.params.name + ' has been reset for ' + tabLock[req.params.iWait].object + ' , file saved with metadata'});
+          } else if (code===201){
+            return res.status(201).send({status:201,message:'file system ' + req.params.name + ' has been resetfor ' + tabLock[req.params.iWait].object + ', file saved but metaData not updated'});
+          } else {
+            return res.status(202).send({message:'file system memory has been reset but file ' + req.params.name + ' could not be saved'});
+          }
+        }
+      else {
+        return res.status(203).send({status:203,message:'file system memory' + req.params.name + ' has been reset but record '+ tabLock[req.params.iWait].object + ' in file ' + req.params.name + ' was not found'});
+          } 
+
 }
 
 function inUseFileSystem(tablockItem){
@@ -404,7 +440,7 @@ function checkData(fileSystem, iWait, tabLock, credentialDate){
   //console.log('start checkData');
   if (fileSystem.length > 0 ){
     for (var i=0; i<fileSystem.length && (fileSystem[i].object!==tabLock[iWait].object || fileSystem[i].bucket!==tabLock[iWait].bucket); i++){}
-    if (fileSystem[i].credentialDate!==credentialDate){ // server was reinitiated
+    if (i<fileSystem.length && fileSystem[i].credentialDate!==credentialDate){ // server was reinitiated
       
       fileSystem.splice(i,1); // delete the record and create a new one
       const createFS = stdFunctions.createRecord(fileSystem,tabLock[iWait]);
@@ -521,5 +557,6 @@ function checkData(fileSystem, iWait, tabLock, credentialDate){
 
   module.exports = {
     onFileSystem,
-    resetFS
+    resetFS,
+    getMemoryFS
   }

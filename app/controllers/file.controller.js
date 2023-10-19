@@ -41,7 +41,10 @@ async function  enableUniformBucketLevelAccess(bucketName, storage) {
 async function cacheFiles(testProd,fileName){
   var listFiles=[];
   var i=0;
-  if (tabFile.has(0)===false){
+  if (tabFile.has(0)){
+    listFiles = tabFile.get(0);
+  }
+  if (tabFile.has(0)===false || (tabFile.has(0) && listFiles.length===0) ){
     const data = await configData.getFilesToCache(testProd);
     if (data.status === 200){
       for (var i=0; i<data.tab.length; i++){
@@ -60,16 +63,38 @@ async function cacheFiles(testProd,fileName){
   return({tab:listFiles,record:i});
 }
 
+const getCacheFile = async (req, res) => {
+  var myData=await cacheFiles(req.params.testProd,"");
+  return res.send({status:200,cacheFiles:myData.tab});
+}
+
+const reloadCacheFile = async (req, res) => { // reaccess mongo DB
+  if (tabFile.has(0)){
+    tabFile.set(0, []);
+  }
+  var myData=await cacheFiles(req.params.testProd,"");
+  return res.send({status:200,cacheFiles:myData.tab});
+}
+
 const resetCacheFile = async (req, res) => {
   if (tabFile.has(0)){
     var listFiles=[];
     listFiles = tabFile.get(0);
-    for (i=0; i<listFiles.length && fileName!==listFiles[i].file; i++){
-      listFiles[i].updated=true;
-      cache.set(i, []);
+    if (req.params.fileName==="All"){
+      for (i=0; i<listFiles.length; i++){
+        listFiles[i].updated=true;
+        cache.set(i, []);
+        return res.status(200).send({status:200,msg:'cache for all files is reset'});
+      }
+    } else {
+      for (i=0; i<listFiles.length && req.params.fileName!==listFiles[i].file; i++){
+        listFiles[i].updated=true;
+        cache.set(i, []);
+      }
+      return res.status(200).send({status:200,msg:'cache for file ' + req.params.fileName + ' is reset'});
     }
   }
-  return res.status(200).send('cache for files is reset');
+  return res.status(201).send({status:201,msg:'cache for file is empty'});
 }
 
 const getFileContent = async (req, res) => {
@@ -411,7 +436,9 @@ module.exports = {
   copyObject,
   checkLogin,
   getUserPswRecord,
-  resetCacheFile
+  resetCacheFile,
+  getCacheFile,
+  reloadCacheFile
 
   
 };
