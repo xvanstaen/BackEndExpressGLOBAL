@@ -36,6 +36,7 @@ let routes = (app) => {
   router.get("/revokeToken/:projectId/:testProd", authFn.revokeToken);
   router.get("/checkAccessToken/:projectId/:testProd/:accessToken", authFn.checkAccessToken);
   router.get("/getCredentials/:projectId/:testProd/:name", authFn.getCredentials);
+  router.get("/getNewServerUsrId/:projectId/:testProd", authFn.getNewServerUsrId);
 
 
   router.get("/onFileSystem/:projectId/:testProd/:name/:tabLock/:iWait", fileSystem.onFileSystem);

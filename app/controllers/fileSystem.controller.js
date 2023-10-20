@@ -35,7 +35,7 @@ const onFileSystem = async (req, res) => {
         credentials=theValue.credentials;
       } 
     }
-    if (credentials.userServerId===undefined || tabLock[0].credentialDate !== credentials.creationDate){
+    if (credentials.userServerId===undefined || tabLock[req.params.iWait].credentialDate !== credentials.creationDate){
       myFileSystem = await getFileSystem(req.query.bucket, req.params.projectId, tabLock[req.params.iWait].objectName);
       for (var i=0; i< myFileSystem.length && ( myFileSystem[i].object!==tabLock[req.params.iWait].object ||  myFileSystem[i].bucket!==tabLock[req.params.iWait].bucket); i++){}
       if (i< myFileSystem.length && myFileSystem[i].createdAt === tabLock[req.params.iWait].createdAt && 
@@ -43,7 +43,8 @@ const onFileSystem = async (req, res) => {
           myFileSystem[i].userServerId === tabLock[req.params.iWait].userServerId && 
           myFileSystem[i].credentialDate === tabLock[req.params.iWait].credentialDate  ){
           tabLock[req.params.iWait].credentialDate=credentials.creationDate;
-          tabLock[req.params.iWait].userServerId=credentials.userServerId;
+          const theValue=await authFn.fnGetNewServerUsrId(req.params.projectId);
+          tabLock[req.params.iWait].userServerId=theValue.credentials.userServerId;
 
           // last update was performed by same user
           myFileSystem.splice(i,0);
@@ -509,7 +510,7 @@ function checkData(fileSystem, iWait, tabLock, credentialDate){
           }
           
       } else {
-        if (tabLock[iWait].createdAt === fileSystem[i].createdAt && tabLock[iWait].userServerId === fileSystem[i].userServerId){
+        if (tabLock[iWait].createdAt === fileSystem[i].createdAt && tabLock[iWait].updatedAt === fileSystem[i].updatedAt && tabLock[iWait].userServerId === fileSystem[i].userServerId){
           if (tabLock[iWait].action==="check"){  
             tabLock[iWait].status=810; 
                 console.log('check file = record found and locked by same user; return inData.status 810');

@@ -34,7 +34,6 @@ async function getClient(projectId){
       projectId: projectId,
       authClient: client,
     };
-    
     return (new Storage(storageOptions));
   }
 
@@ -49,13 +48,11 @@ const requestDefaultCredentials = async (req, res) => {
   
 async function getDefaultCredentials(projectId){
     try {
-  
       if ( cache.has(0)){
           credentials=cache.get(0);
-          credentials.userServerId++
+          // credentials.userServerId++
           cache.set(0, credentials)
       } else {
-         
           const auth = new GoogleAuth({
             scope: scopes,
             projectId: projectId
@@ -73,32 +70,39 @@ async function getDefaultCredentials(projectId){
           cache.set(0, credentials)
           console.log('credentials.creationDate = ' + credentials.creationDate);
       }
-      /**
-      if ( cache.has(0)){
-        var myCrypto=cache.get(0);
-      } else {
-            const storage = await getClient(projectId);
-    
-            bucket = storage.bucket('xmv-cryptodata');
-            bucket.projectId=projectId;
 
-            const [downloadFile] = await bucket.file('cryptoKey').download();
-            cache.set(0,JSON.parse(downloadFile))
-            myCrypto=JSON.parse(downloadFile);
-      }
-      */
       return({status:200,credentials:credentials});
-      //res.status(200).send({credentials:credentials});
     }
     catch (err) {
       return({status:700,err:err})
-        res.status(700).send(err);
+
     }
-  
-  
   }
 
+const getNewServerUsrId = async (req, res) => {
+  theValue = await getDefaultCredentials(req.params.projectId);
+  if (theValue.status===200){
+    credentials=theValue.credentials;
+    credentials.userServerId++
+    cache.set(0, credentials);
+    return res.send({status:200,credentials:credentials});  
+  } else {
+    return res.send(theValue);
+  }
+  
+}
 
+async function fnGetNewServerUsrId(projectId){
+  theValue = await getDefaultCredentials(projectId);
+  if (theValue.status===200){
+    credentials=theValue.credentials;
+    credentials.userServerId++
+    cache.set(0, credentials);
+    return({status:200,credentials:credentials});  
+  }  else {
+    return theValue;
+  }
+}
 
 const getCredentials= async (req, res) => {
  
@@ -229,6 +233,8 @@ const requestTokenOAuth2 = async (req, res) => {
     requestTokenOAuth2, // to be tested
     refreshToken,// to be tested
     revokeToken,// to be tested
+    getNewServerUsrId,
+    fnGetNewServerUsrId
     
  
   }
