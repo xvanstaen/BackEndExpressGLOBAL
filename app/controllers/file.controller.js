@@ -68,6 +68,19 @@ const getCacheFile = async (req, res) => {
   return res.send({status:200,cacheFiles:myData.tab});
 }
 
+const insertCacheFile = async (req, res) => {
+  var myData=await cacheFiles(req.params.testProd,"");
+  for (var i=0; i<myData.tab.length && myData.tab[i].file!==req.params.name; i++){}
+  if (i===myData.tab.length){
+    const classFile={file:'',updated:true};
+    myData.tab.push(classFile);
+    myData.tab[myData.tab.length-1].file=req.params.name;
+    tabFile.set(0, myData.tab);
+  }
+  return res.send({status:200,cacheFiles:myData.tab});
+}
+
+
 const reloadCacheFile = async (req, res) => { // reaccess mongo DB
   if (tabFile.has(0)){
     tabFile.set(0, []);
@@ -97,7 +110,51 @@ const resetCacheFile = async (req, res) => {
   return res.status(201).send({status:201,msg:'cache for file is empty'});
 }
 
+const getMedialinkContent = async (req, res) => {
+  const storage = await authFn.getClient(req.params.projectId);
+  var bucket = storage.bucket(req.query.bucket);
+  bucket.projectId=req.params.projectId;
+  const [metaData] = await bucket.file(req.params.name).getMetadata();
+  console.log("File searched at " + metaData.mediaLink);
+  try {
+      res.redirect(metaData.mediaLink);
+  }
+  catch(err){
+    console.log("Could not get the file " + metaData.mediaLink + '  error==>' + err);
+    res.status(405).send( { message:"Could not get the file " + metaData.mediaLink, error: err } );
+  }
+}
+/******************************************************************************
+
+                          text file formats supported are :
+                          -----------------------------------
+                          ===> Macintosh Formtted Text.txt
+                          ===> Tab-delimited text.txt
+                          ===> .txt
+                          ===> DOS.txt
+
+********************************************************************************/
+const getTextFile= async (req, res) => {
+  const storage = await authFn.getClient(req.params.projectId);
+  var bucket = storage.bucket(req.query.bucket);
+  bucket.projectId=req.params.projectId;
+  
+    const [downloadFile] = await bucket.file(req.params.name).download();
+    try{
+
+      var myData={text:""};
+      myData.text=downloadFile.toString();
+      res.status(200).send(myData);
+    }
+    catch(err){
+      console.log("Could not get the file " +req.params.name + '  error==>' + err);
+      res.status(404).send( { message:"Could not get the file. ", error: err } );
+    }
+
+}
+
 const getFileContent = async (req, res) => {
+  var errDownload=0;
   try {
     const theValue=await cacheFiles(req.params.testProd, req.params.name);
     var listFiles=theValue.tab;
@@ -119,18 +176,32 @@ const getFileContent = async (req, res) => {
       const [downloadFile] = await bucket.file(req.params.name).download();
       try{
         if (i<listFiles.length){
-          listFiles = tabFile.get(0);
-          listFiles[i].updated=false;
+          listFiles = tabFile.get(0); 
+          listFiles[i].updated=false; 
           tabFile.set(0, listFiles);
           cache.set(i,JSON.parse(downloadFile));
           console.log('retrieved file  ' + req.params.name + ' & update of cache ' + i);
         }
-        res.status(200).send(JSON.parse(downloadFile));
+        try{
+          const theJson=JSON.parse(downloadFile)
+          res.status(200).send(theJson);
+        }
+        catch(err){
+          var myData={text:""};
+          myData.text=downloadFile.toString();
+          res.status(200).send(myData);
+        }
+        
+        
+      
       }
       catch(err){
-        console.log("Could not get the file " +req.params.name + '  error==>' + err);
-        res.status(404).send( { message:"Could not get the file. ", error: err } );
-      }
+        
+          console.log("Could not get the file " +req.params.name + '  error==>' + err);
+          res.status(404).send( { message:"Could not get the file. ", error: err } );
+        }
+        
+    
 
     }
 
@@ -438,7 +509,10 @@ module.exports = {
   getUserPswRecord,
   resetCacheFile,
   getCacheFile,
-  reloadCacheFile
+  reloadCacheFile,
+  getMedialinkContent,
+  getTextFile,
+  insertCacheFile
 
   
 };

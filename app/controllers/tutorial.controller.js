@@ -76,7 +76,7 @@ module.exports.getConfigData = async function (testProd, searchString) {
       cache.set(1, record[1]);
 
       //return ({status:200,config:data});
-      console.log('cache is set up; status=200');
+      console.log('cache of config data is set up; status=200');
       return ({status:200,configProd:record[0],configTest:record[1]});
     } else {
       console.log('pb to retrieve config data; status=510');

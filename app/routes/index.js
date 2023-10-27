@@ -14,6 +14,9 @@ let routes = (app) => {
   router.get("/listFiles/:projectId/:testProd", controller.getListFiles);
   router.get("/filesmeta/:projectId/:testProd", controller.getListMetaDataFiles);
   router.get("/files/:projectId/:testProd/:name", controller.getFileContent);
+  router.get("/textFile/:projectId/:testProd/:name", controller.getTextFile);
+  router.get("/mediaLink/:projectId/:testProd/:name", controller.getMedialinkContent);
+
   router.get("/meta/:projectId/:testProd/:name", controller.getObjectMeta);
   router.get("/lBucket/:projectId/:testProd", controller.listBuckets);
   router.get("/delete/:projectId/:testProd/:name", controller.deleteObject);
@@ -24,6 +27,7 @@ let routes = (app) => {
   router.get("/resetCacheFile/:projectId/:testProd/:fileName", controller.resetCacheFile);
   router.get("/getCacheFile/:projectId/:testProd", controller.getCacheFile);
   router.get("/reloadCacheFile/:projectId/:testProd", controller.reloadCacheFile);
+  router.get("/insertCacheFile/:projectId/:testProd/:name", controller.insertCacheFile);
 
   router.get("/checkLogin/:projectId/:testProd/:userId/:psw/", controller.checkLogin);
 
