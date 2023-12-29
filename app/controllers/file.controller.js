@@ -54,7 +54,8 @@ async function cacheFiles(testProd,fileName){
       }
       tabFile.set(0, listFiles);
     } else {
-      console.log('pb to retrieve filesToCache from configServer; listFiles remains empty');
+      console.log('pb to retrieve filesToCache from configServer; cache listFiles remains empty; env=' + testProd + 
+      'data.status=' + data.status);
     }
   } else {
     listFiles = tabFile.get(0);
@@ -191,18 +192,12 @@ const getFileContent = async (req, res) => {
           myData.text=downloadFile.toString();
           res.status(200).send(myData);
         }
-        
-        
-      
       }
       catch(err){
         
           console.log("Could not get the file " +req.params.name + '  error==>' + err);
           res.status(404).send( { message:"Could not get the file. ", error: err } );
         }
-        
-    
-
     }
 
   }
@@ -267,6 +262,8 @@ const upload =async (req, res) => {
 
     if (req.params.contentType==='json') {
       var theType='application/json';
+    } else if (req.params.contentType==='text') {
+      var theType='text/plain';
     }
     const blobStream = blob.createWriteStream({
       metadata: {
@@ -327,17 +324,131 @@ const upload =async (req, res) => {
   }
 };
 
+const uploadMetaPerso =async (req, res) => {
+  try {
+    //console.log(' ===> upload');
+    const storage = await authFn.getClient(req.params.projectId);
+   
+    var bucket = storage.bucket(req.query.bucket);
+    bucket.projectId=req.params.projectId;
+    enableUniformBucketLevelAccess(req.query.bucket, storage);
+    
+    await processFile(req, res);
+    if (!req.file) {
+      return res.status(400).send({ message: "Please upload a file!" });
+    }
+
+    // Create a new blob in the bucket and upload the file data. req.params.name
+    const blob = bucket.file(req.file.originalname);
+    var theContentType="";
+    if (req.params.contentType==='json' || req.params.contentType==='application') {
+      theContentType='application/json';
+    } else if (req.params.contentType==='text' || req.params.contentType==='plain') {
+      theContentType='text/plain';
+    }
+
+    var tabMeta=JSON.parse(req.params.metaPerso);
+ 
+    if (Array.isArray(tabMeta) === false) {
+      tabMeta=[];
+    }
+  
+  
+    const cacheCtrl='"cacheControl":"';
+    const theType='"contentType":"';
+    const theMeta='"metadata":{';
+    var myMetaStr=theMeta;
+    for (i=0; i<tabMeta.length && tabMeta[i].key!==""; i++){
+      if (i>0){
+        myMetaStr=myMetaStr+',';
+      }
+      myMetaStr=myMetaStr+ '"'+tabMeta[i].key+'":"'+tabMeta[i].value+'"';
+    }
+    myMetaStr=myMetaStr+'}';
+    var persoMeta="";
+    if (tabMeta.length>0){
+        persoMeta='{"metadata":'+'{'+cacheCtrl+req.params.cacheControl+'",'+theType+theContentType+'",'+myMetaStr+'}' +',"resumable": "false"}';
+    } else {
+       persoMeta='{"metadata":'+'{'+cacheCtrl+req.params.cacheControl+'",'+theType+theContentType+'"}'+',"resumable": "false"}';
+    }
+    console.log(JSON.parse(persoMeta))
+    const blobStream = blob.createWriteStream(JSON.parse(persoMeta)); 
+
+    blobStream.on("error", (err) => {
+      res.status(505).send({ message: err.message });
+    });
+    blobStream.on("finish", async (data) => {
+    const theValue=await cacheFiles(req.params.testProd, req.params.name);
+    var listFiles=theValue.tab;
+    const i = theValue.record;
+    if (i<listFiles.length  && listFiles[i].file === req.params.name) {
+        console.log('flag field updated to true for file ' + req.params.name + ' in cache nb' + i);
+        listFiles[i].updated=true;
+        tabFile.set(0, listFiles);
+    }
+    res.status(200).send({
+          message: "Uploaded the file successfully: " + req.file.originalname
+        });
+    });
+    blobStream.end(req.file.buffer);
+  } catch (err) {
+    res.status(515).send({message: `Could not upload the file: ${req.file.originalname}. ${err}` });
+  }
+};
+
+
 const updateMeta = async (req, res) => {
   const storage = await authFn.getClient(req.params.projectId);
   var bucket = storage.bucket(req.query.bucket);
   bucket.projectId=req.params.projectId;
+ /**
+  const persoMetadata = {
+    cacheControl: 'public,max-age=0,no-cache,no-store',
+    contentType: 'application/json',
+    metadata:{
+      keyOne:'valueOne',
+      keyTwo:'valueTwo',
+    }
+  };
+  */
+  
+  var tabMeta=JSON.parse(req.params.metaPerso);
+ 
+  if (Array.isArray(tabMeta) === false) {
+    tabMeta=[];
+  }
+  
+  var i = req.params.metaType.indexOf('-');
+  const theContentType=req.params.metaType.substring(0,i)+'/'+req.params.metaType.substring(i+1);
+  var testData=req.params.metaType;
+  testData.replace('-', '/');
 
+  const cacheCtrl='"cacheControl":"';
+  const theType='"contentType":"';
+  const theMeta='"metadata":{';
+  var myMetaStr=theMeta;
+  for (i=0; i<tabMeta.length; i++){
+    if (i>0){
+      myMetaStr=myMetaStr+',';
+    }
+    myMetaStr=myMetaStr+ '"'+tabMeta[i].key+'":"'+tabMeta[i].value+'"';
+  }
+  myMetaStr=myMetaStr+'}';
+  var persoMeta="";
+  if (tabMeta.length>0){
+      persoMeta='{'+cacheCtrl+req.params.metaCache+'",'+theType+theContentType+'",'+myMetaStr+'}';
+  } else {
+     persoMeta='{'+cacheCtrl+req.params.metaCache+'",'+theType+theContentType+'"}';
+  }
+ 
+  console.log(persoMeta );
+  
+  // {"cacheControl":"public,max-age=0,no-cache,no-store","contentType":"application/json","metadata":{"myOwnKwy":"myPerformance"}}
   try {
-    const [metaData] = await bucket.file(req.params.name).setMetadata(req.params.newMetaData);
-
-    res.status(200).send({
-      message: "MetaData successfully updated "
-    });
+        const [metaDataPerso] = await bucket.file(req.params.name).setMetadata(JSON.parse(persoMeta));
+        console.log('metadata='+metaDataPerso);
+    
+        res.status(200).send({message: "MetaData successfully updated ",metaData:metaDataPerso});
   } catch (err) {
     res.status(500).send({ message: "MetaData not updated - returned error is " + err });
   }
@@ -363,8 +474,6 @@ const getListFiles = async (req, res) => {
   }
 };
 
-
-
 const getListMetaDataFiles = async (req, res) => {
   try {
     const storage = await authFn.getClient(req.params.projectId);
@@ -386,8 +495,6 @@ const getListMetaDataFiles = async (req, res) => {
     });
   }
 };
-
-
 
 
 const getObjectMeta = async (req, res) => {
@@ -495,6 +602,7 @@ const deleteObject = async (req, res) => {
 
 module.exports = {
   upload,
+  uploadMetaPerso,
   getListFiles,
   getFileContent,
   getObjectMeta,

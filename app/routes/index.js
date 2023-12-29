@@ -10,7 +10,8 @@ const cryptoFn =  require("../controllers/cryptoFn.js");
 
 let routes = (app) => {
   router.post("/upload/:projectId/:name/:testProd/:cacheControl/:contentType", controller.upload);
-  router.post("/updateMeta/:projectId/:testProd/:name/:newMetaData", controller.updateMeta);
+  router.post("/uploadMetaPerso/:projectId/:name/:testProd/:cacheControl/:contentType/:metaPerso", controller.uploadMetaPerso);
+  router.post("/updateMeta/:projectId/:testProd/:name/:metaCache/:metaType/:metaPerso", controller.updateMeta);
   router.get("/listFiles/:projectId/:testProd", controller.getListFiles);
   router.get("/filesmeta/:projectId/:testProd", controller.getListMetaDataFiles);
   router.get("/files/:projectId/:testProd/:name", controller.getFileContent);
