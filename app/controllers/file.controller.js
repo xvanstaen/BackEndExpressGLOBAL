@@ -19,6 +19,8 @@ const nodecache = require('node-cache');
 var cache = new nodecache; // used for the content of the file
 var tabFile = new nodecache;
 
+var cacheConsole= new nodecache;
+
 const authFn = require("./authFn");
 const stdFunctions = require("./stdFunctions");
 const cryptoFn = require("./cryptoFn");
@@ -324,9 +326,33 @@ const upload =async (req, res) => {
   }
 };
 
+const getCacheConsole=async (req, res) => {
+  if (cacheConsole.has(0)){
+    const theTab=cacheConsole.get(0);
+    return res.send(theTab);
+  } else {
+    return res.send("nothing found in cacheConsole")
+  }
+}
+
+async function fillCacheConsole(theMsg){
+  var theTab=[];
+  if (cacheConsole.has(0)){
+    theTab = cacheConsole.get(0);
+    theTab[theTab.length]=theMsg;
+  } else {
+    theTab[0]=theMsg;
+  }
+  cacheConsole.set(0, theTab);
+}
+
 const uploadMetaPerso =async (req, res) => {
   try {
-    //console.log(' ===> upload');
+
+    fillCacheConsole('in uploadMetaPerso');
+
+ 
+    
     const storage = await authFn.getClient(req.params.projectId);
    
     var bucket = storage.bucket(req.query.bucket);
@@ -352,7 +378,6 @@ const uploadMetaPerso =async (req, res) => {
     if (Array.isArray(tabMeta) === false) {
       tabMeta=[];
     }
-  
   
     const cacheCtrl='"cacheControl":"';
     const theType='"contentType":"';
@@ -392,7 +417,7 @@ const uploadMetaPerso =async (req, res) => {
     });
     blobStream.end(req.file.buffer);
   } catch (err) {
-    res.status(515).send({message: `Could not upload the file: ${req.file.originalname}. ${err}` });
+    res.status(517).send({message: `Could not upload the file: ${req.file.originalname}. ${err}` });
   }
 };
 
@@ -620,7 +645,8 @@ module.exports = {
   reloadCacheFile,
   getMedialinkContent,
   getTextFile,
-  insertCacheFile
+  insertCacheFile,
+  getCacheConsole
 
   
 };

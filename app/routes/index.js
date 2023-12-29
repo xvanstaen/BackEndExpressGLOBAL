@@ -30,6 +30,8 @@ let routes = (app) => {
   router.get("/reloadCacheFile/:projectId/:testProd", controller.reloadCacheFile);
   router.get("/insertCacheFile/:projectId/:testProd/:name", controller.insertCacheFile);
 
+  router.get("/getCacheConsole/:projectId/:testProd", controller.getCacheConsole);
+
   router.get("/checkLogin/:projectId/:testProd/:userId/:psw/", controller.checkLogin);
 
   router.get("/encryptFn/:projectId/:testProd/:inData/:inKey/:inMethod/:inAuth", cryptoFn.encryptFn);
@@ -42,7 +44,6 @@ let routes = (app) => {
   router.get("/checkAccessToken/:projectId/:testProd/:accessToken", authFn.checkAccessToken);
   router.get("/getCredentials/:projectId/:testProd/:name", authFn.getCredentials);
   router.get("/getNewServerUsrId/:projectId/:testProd", authFn.getNewServerUsrId);
-
 
   router.get("/onFileSystem/:projectId/:testProd/:name/:tabLock/:iWait", fileSystem.onFileSystem);
   router.get("/resetFS/:projectId/:testProd/:name/:tabLock/:iWait", fileSystem.resetFS);
