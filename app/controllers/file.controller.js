@@ -153,17 +153,18 @@ const getTextFile= async (req, res) => {
       console.log("Could not get the file " +req.params.name + '  error==>' + err);
       res.status(404).send( { message:"Could not get the file. ", error: err } );
     }
-
 }
 
 const getFileContent = async (req, res) => {
-  var errDownload=0;
   try {
     const theValue=await cacheFiles(req.params.testProd, req.params.name);
     var listFiles=theValue.tab;
     const i = theValue.record;
     if (i<listFiles.length  && (cache.get(i)) && listFiles[i].updated===false) {
         console.log('retrieve file  ' + req.params.name + ' from cache ' + i);
+
+        fillCacheConsole('retrieve file '+ req.params.name + ' from cache ' + i + " listFiles=","listFiles");
+        
         res.status(200).send(cache.get(i));
     } else {
       const storage = await authFn.getClient(req.params.projectId);
@@ -176,6 +177,7 @@ const getFileContent = async (req, res) => {
       res.redirect(metaData.mediaLink);
        */
       console.log('retrieve file '+ req.params.name);
+      fillCacheConsole('retrieve file '+ req.params.name ,tabFile.get(0));
       const [downloadFile] = await bucket.file(req.params.name).download();
       try{
         if (i<listFiles.length){
@@ -196,7 +198,6 @@ const getFileContent = async (req, res) => {
         }
       }
       catch(err){
-        
           console.log("Could not get the file " +req.params.name + '  error==>' + err);
           res.status(404).send( { message:"Could not get the file. ", error: err } );
         }
@@ -335,13 +336,22 @@ const getCacheConsole=async (req, res) => {
   }
 }
 
-async function fillCacheConsole(theMsg){
+async function fillCacheConsole(theMsg, content){
+ 
   var theTab=[];
   if (cacheConsole.has(0)){
-    theTab = cacheConsole.get(0);
-    theTab[theTab.length]=theMsg;
+      const tabRecord={theDate:"", msg:"", content:""}
+      theTab = cacheConsole.get(0);
+      theTab.push(tabRecord);
+      theTab[theTab.length-1].theDate=stdFunctions.defineMyDate();
+      theTab[theTab.length-1].content=content;
+      theTab[theTab.length-1].msg=theMsg;
   } else {
-    theTab[0]=theMsg;
+      const tabRecord={theDate:"", msg:"", content:""}
+      theTab.push(tabRecord);
+      theTab[0].theDate=stdFunctions.defineMyDate();
+      theTab[0].msg=theMsg;
+      theTab[0].content=content;
   }
   cacheConsole.set(0, theTab);
 }
@@ -349,10 +359,8 @@ async function fillCacheConsole(theMsg){
 const uploadMetaPerso =async (req, res) => {
   try {
 
-    fillCacheConsole('in uploadMetaPerso');
+    fillCacheConsole('in uploadMetaPerso',"");
 
- 
-    
     const storage = await authFn.getClient(req.params.projectId);
    
     var bucket = storage.bucket(req.query.bucket);
