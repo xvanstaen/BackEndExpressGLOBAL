@@ -16,9 +16,8 @@ const url = require('url');
 const nodecache = require('node-cache');
 var credentialCache = new nodecache;
 var fileSystemCache = new nodecache;
-//var credentials='';
-var lockFileSystem=[];
 
+var lockFileSystem=[];
 
 const onFileSystem = async (req, res) => {
   var credentials='';
@@ -26,58 +25,90 @@ const onFileSystem = async (req, res) => {
   try {
     var tabLock=JSON.parse(req.params.tabLock);
 
-    if ( credentialCache.has(0)){
+    if ( credentialCache.has(0)){ // retrieve credentials values in memory
         credentials=credentialCache.get(0);
-    } else {
+    } else { // if no credentials in memory then generate get them
       const theValue = await authFn.getDefaultCredentials(req.params.projectId);
       if (theValue.status === 200){
         credentialCache.set(0,theValue.credentials);
         credentials=theValue.credentials;
       } 
     }
+    // check if the retrieved credentials are the same as those provided by the application for this user; if not then download File System from Cloud Storage 
     if (credentials.userServerId===undefined || tabLock[req.params.iWait].credentialDate !== credentials.creationDate){
+      // retrieve the File System -> objectName refers to the functionality that is locked 
       myFileSystem = await getFileSystem(req.query.bucket, req.params.projectId, tabLock[req.params.iWait].objectName);
-      for (var i=0; i< myFileSystem.length && ( myFileSystem[i].object!==tabLock[req.params.iWait].object ||  myFileSystem[i].bucket!==tabLock[req.params.iWait].bucket); i++){}
+      if (myFileSystem.length>0){
+          for (var i=0; i< myFileSystem.length && ( myFileSystem[i].object!==tabLock[req.params.iWait].object ||  myFileSystem[i].bucket!==tabLock[req.params.iWait].bucket); i++){}
+          // the record has been found and it is related to another user
+          
+          if (i< myFileSystem.length && myFileSystem[i].credentialDate === credentials.creationDate) {
+            // need to check if timeout occured; if NO then return msg to the requesting app-user otherwise assign the record to this user
+          
+            const timeOutValue=fnAddTime(myFileSystem[i].updatedAt,myFileSystem[i].timeoutFileSystem.hh,myFileSystem[i].timeoutFileSystem.mn);
+            const currentTime=defineMyDate();
+            if (Number(currentTime) <= Number(timeOutValue)){
+              const theMsg='server was reset and file is locked by another user';
+              console.log(theMsg);
+              fileController.fillCacheConsole(theMsg,{status:956})
+              return res.send({msg: theMsg, status:956});   
+            }
+              const theMsg='File System: server was reset, file was locked by another user but timeout occured';
+              console.log(theMsg);
+              const theCode=fileController.fillCacheConsole(theMsg,{updatedAt:myFileSystem[i].updatedAt,timeOut:timeOutValue,currentTime:currentTime});
+          } 
+      }
+      /*
       if (i< myFileSystem.length && myFileSystem[i].createdAt === tabLock[req.params.iWait].createdAt && 
           myFileSystem[i].updatedAt === tabLock[req.params.iWait].updatedAt &&
           myFileSystem[i].userServerId === tabLock[req.params.iWait].userServerId && 
           myFileSystem[i].credentialDate === tabLock[req.params.iWait].credentialDate  ){
-          tabLock[req.params.iWait].credentialDate=credentials.creationDate;
-          const theValue=await authFn.fnGetNewServerUsrId(req.params.projectId);
-          tabLock[req.params.iWait].userServerId=theValue.credentials.userServerId;
+      */
 
-          // last update was performed by same user
-          myFileSystem.splice(i,0);
-          const code = await saveFS(req.params.projectId, req.query.bucket,tabLock[req.params.iWait].objectName,JSON.stringify(myFileSystem),tabLock[req.params.iWait]);
-          console.log('server was reset and same user re-accesses the file');
-          }
-        else if (i< myFileSystem.length && myFileSystem[i].credentialDate === credentials.creationDate) {
-          const theMsg='server was reset and file is locked by another user';
-          console.log(theMsg);
-          return res.send({msg: theMsg, status:956});   
+        tabLock[req.params.iWait].credentialDate=credentials.creationDate;
+        const theValue=await authFn.fnGetNewServerUsrId(req.params.projectId);
+        tabLock[req.params.iWait].userServerId=theValue.credentials.userServerId;
+        resetInUseFileSystem(tabLock[req.params.iWait]); // ensure that corresponding memory data is released
+        // last update was performed by same user or timeout occured for the other user
+        if (myFileSystem.length>0){
+            myFileSystem.splice(i,0);
+            const code = await saveFS(req.params.projectId, req.query.bucket,tabLock[req.params.iWait].objectName,JSON.stringify(myFileSystem),tabLock[req.params.iWait]);
+            const theMsg='File System: server was reset and same user re-accesses the file; new FS record is';
+            fileController.fillCacheConsole(theMsg,myFileSystem);
+            console.log(theMsg);
         } else {
+          const theMsg='File System: server was reset and same user re-accesses the file which indeed is empty';
+            fileController.fillCacheConsole(theMsg,myFileSystem);
+            console.log(theMsg);
+        }
+      /** } */ 
+
+
+      /**  there is no else because if the record is not locked by another user then the lock will be done for this requesting  application user 
+       else  {
           const theMsg=' credentials.userServerId = ' + credentials.userServerId + '|| tabLock[0].credentialDate ('+tabLock[0].credentialDate+ ')< credentials.creationDate (' + credentials.creationDate + ');  server has been reinitialized ; restart your apps' 
           console.log(theMsg);
           return res.send({msg: theMsg, status:955});       
-        }
       }
+      ***/
+    }
 
-      
-      console.log('===> in updateFileSystem() for user ' + JSON.stringify(tabLock[req.params.iWait]) );
-      console.log('lockFileSystem='+JSON.stringify(lockFileSystem));
-      if (tabLock[0].action!=='onDestroy'){
-        const inUse=inUseFileSystem(tabLock[req.params.iWait]);
-        if (inUse.code!==0 ){
-          console.log('retry later, status error=' + inUse.code);
-          return res.send({msg: 'retry later', status:inUse.code});
-        }
+    
+    console.log('===> in updateFileSystem() for user ' + JSON.stringify(tabLock[req.params.iWait]) );
+    console.log('lockFileSystem='+JSON.stringify(lockFileSystem));
+    if (tabLock[0].action!=='onDestroy'){
+      const inUse=inUseFileSystem(tabLock[req.params.iWait]);
+      if (inUse.code!==0 ){
+        console.log('retry later, status error=' + inUse.code);
+        return res.send({msg: 'retry later', status:inUse.code});
       }
+    }
 
-      var theStatus = [];
+    var theStatus = [];
          
-        //console.log('theFileParse=',theFileParse);
-      var tabInUse=[];
-      if (tabLock[req.params.iWait].action==='onDestroy'  ){
+    //console.log('theFileParse=',theFileParse);
+    var tabInUse=[];
+    if (tabLock[req.params.iWait].action==='onDestroy'  ){
         for (var iWait=0; iWait<tabLock.length; iWait++){
           
           if (tabLock[iWait].lock===1){
@@ -97,15 +128,14 @@ const onFileSystem = async (req, res) => {
               var tabFS=[];
               var record=0;
               if (fileSystemCache.has(0)){
-                  tabFS = fileSystemCache.get(0);
-                  for (record=0; record<tabFS.length && tabFS[record].fileName!==tabLock[iWait].objectName; record++){}
-                  if (record<tabFS.length) {
-                    myFileSystem = tabFS[record].content;
-                    trouve = true;
-                  } 
+                tabFS = fileSystemCache.get(0);
+                for (record=0; record<tabFS.length && tabFS[record].fileName!==tabLock[iWait].objectName; record++){}
+                if (record<tabFS.length) {
+                  myFileSystem = tabFS[record].content;
+                  trouve = true;
+                } 
               } 
-              if (trouve === false)
-              {
+              if (trouve === false){
                 myFileSystem = await getFileSystem(req.query.bucket, req.params.projectId, tabLock[iWait].objectName);
                 const recordFS={fileName:"", content:""}
                 tabFS.push(recordFS);
@@ -155,7 +185,10 @@ const onFileSystem = async (req, res) => {
 
         console.log('on Destroy is completed for userServerId ' +  tabLock[0].userServerId)
         return res.send({message:"on Destroy is completed", status:999});
-      } else if (tabLock[req.params.iWait].action==='lock'|| tabLock[req.params.iWait].action==='unlock' ||
+      } // ============ end of onDestroy process
+
+
+      if (tabLock[req.params.iWait].action==='lock'|| tabLock[req.params.iWait].action==='unlock' ||
             tabLock[req.params.iWait].action==='check' || tabLock[req.params.iWait].action==='check&update'
             || tabLock[req.params.iWait].action==='updatedAt' ) {
 
@@ -171,9 +204,8 @@ const onFileSystem = async (req, res) => {
                     myFileSystem = tabFS[record].content;
                     trouve = true;
                   } 
-            } 
-            if (trouve === false)
-            {
+          } 
+          if (trouve === false){
               myFileSystem = await getFileSystem(req.query.bucket, req.params.projectId, tabLock[req.params.iWait].objectName)
               const recordFS={fileName:"", content:""}
               tabFS.push(recordFS);
@@ -181,6 +213,8 @@ const onFileSystem = async (req, res) => {
               tabFS[tabFS.length-1].content=myFileSystem;
               record=tabFS.length-1;
               fileSystemCache.set(0,tabFS);
+              console.log('File System: memory record is created for ' + tabLock[req.params.iWait].objectName);
+              fileController.fillCacheConsole('File System: memory record is created for ' + tabLock[req.params.iWait].objectName,myFileSystem);
             }
           // const [fileData] = await bucketFileSystem.file(tabLock[req.params.iWait].objectName).download();
           // const myFileSystem = await getFileSystem(req.query.bucket, req.params.projectId, tabLock[req.params.iWait].objectName)
@@ -198,11 +232,11 @@ const onFileSystem = async (req, res) => {
               };
               const code = await saveFS(req.params.projectId, req.query.bucket,tabLock[req.params.iWait].objectName,JSON.stringify(theStatus.theFile),tabLock[req.params.iWait]);
               tabFS[record].content=myFileSystem;
-                fileSystemCache.set(0,tabFS);
-                if (tabInUse[req.params.iWait]===0){
-                  resetInUseFileSystem(tabLock[req.params.iWait]);
-                  tabInUse[req.params.iWait]===1;
-                }
+              fileSystemCache.set(0,tabFS);
+              if (tabInUse[req.params.iWait]===0){
+                resetInUseFileSystem(tabLock[req.params.iWait]);
+                tabInUse[req.params.iWait]===1;
+              }
               if (code===200){
                 return res.send({tabLock:tabLock, message: tabLock[req.params.iWait].action + " is completed for user " + tabLock[req.params.iWait].userServerId, status:200});
               } else if (code===201){
@@ -283,31 +317,32 @@ const resetFS= async (req, res) => {
         }
   }
 
-       // myFileSystem = tabFS[record].content
-      myFileSystem = await getFileSystem(req.query.bucket, req.params.projectId, tabLock[req.params.iWait].objectName);
-      for (record=0; record<myFileSystem.length && myFileSystem[record].object!==tabLock[req.params.iWait].object; record++){}
-      if (record<myFileSystem.length) {
-          myFileSystem.splice(record,1);
-          const code = await saveFS(req.params.projectId, req.query.bucket,tabLock[req.params.iWait].objectName,JSON.stringify(myFileSystem),tabLock[req.params.iWait]);
-          if (code===200){
-            return res.status(200).send({status:200,message:'file system ' + req.params.name + ' has been reset for ' + tabLock[req.params.iWait].object + ' , file saved with metadata'});
-          } else if (code===201){
-            return res.status(201).send({status:201,message:'file system ' + req.params.name + ' has been resetfor ' + tabLock[req.params.iWait].object + ', file saved but metaData not updated'});
-          } else {
-            return res.status(202).send({message:'file system memory has been reset but file ' + req.params.name + ' could not be saved'});
-          }
-        }
-      else {
-        return res.status(203).send({status:203,message:'file system memory' + req.params.name + ' has been reset but record '+ tabLock[req.params.iWait].object + ' in file ' + req.params.name + ' was not found'});
-          } 
+  // myFileSystem = tabFS[record].content
+  myFileSystem = await getFileSystem(req.query.bucket, req.params.projectId, tabLock[req.params.iWait].objectName);
+  for (record=0; record<myFileSystem.length && myFileSystem[record].object!==tabLock[req.params.iWait].object; record++){}
+  if (record<myFileSystem.length) {
+      myFileSystem.splice(record,1);
+      const code = await saveFS(req.params.projectId, req.query.bucket,tabLock[req.params.iWait].objectName,JSON.stringify(myFileSystem),tabLock[req.params.iWait]);
+      if (code===200){
+        return res.status(200).send({status:200,message:'file system ' + req.params.name + ' has been reset for ' + tabLock[req.params.iWait].object + ' , file saved with metadata'});
+      } else if (code===201){
+        return res.status(201).send({status:201,message:'file system ' + req.params.name + ' has been resetfor ' + tabLock[req.params.iWait].object + ', file saved but metaData not updated'});
+      } else {
+          return res.status(202).send({message:'file system memory has been reset but file ' + req.params.name + ' could not be saved'});
+      }
+  } else {
+      return res.status(203).send({status:203,message:'file system memory' + req.params.name + ' has been reset but record '+ tabLock[req.params.iWait].object + ' in file ' + req.params.name + ' was not found'});
+  } 
 
 }
 
 function inUseFileSystem(tablockItem){
 
   const recordFS={
-    action:"", objectName:"", createdAt:"", updatedAt:"", access:0, userServerId:0, dateTime:""
+    action:"", objectName:"", createdAt:"", updatedAt:"", access:0, userServerId:0, dateTime:"",
+    timeoutFileSystem:{hh:0, mn:0}
   }
+
   for (var i=0; i<lockFileSystem.length && lockFileSystem[i].objectName!==tablockItem.objectName; i++){ }
   if (i===lockFileSystem.length){
     lockFileSystem.push(recordFS);
@@ -316,6 +351,9 @@ function inUseFileSystem(tablockItem){
     lockFileSystem[lockFileSystem.length-1].createdAt = tablockItem.createdAt;
     lockFileSystem[lockFileSystem.length-1].updatedAt = tablockItem.updatedAt;
     lockFileSystem[lockFileSystem.length-1].userServerId = tablockItem.userServerId;
+    lockFileSystem[lockFileSystem.length-1].timeoutFileSystem.hh = tablockItem.timeoutFileSystem.hh;
+    lockFileSystem[lockFileSystem.length-1].timeoutFileSystem.mn = tablockItem.timeoutFileSystem.mn;
+
     lockFileSystem[lockFileSystem.length-1].access=0;
     lockFileSystem[lockFileSystem.length-1].dateTime=stdFunctions.defineMyDate();
     
@@ -332,6 +370,8 @@ function inUseFileSystem(tablockItem){
       lockFileSystem[i].createdAt = tablockItem.createdAt;
       lockFileSystem[i].updatedAt = tablockItem.updatedAt;
       lockFileSystem[i].userServerId = tablockItem.userServerId;
+      lockFileSystem[i].timeoutFileSystem.hh = tablockItem.timeoutFileSystem.hh;
+      lockFileSystem[i].timeoutFileSystem.mn = tablockItem.timeoutFileSystem.mn;
       lockFileSystem[i].access=0;
       lockFileSystem[i].dateTime=currentDateTime;
       return({code:0});
@@ -417,14 +457,6 @@ async function saveFS(projectId, bucket,object,fileContent,tablockItem){
 
 async function getFileSystem(theBucket, projectId, fileName){
   try{
-    /*
-    const storage = new Storage();
-    const bucketFileSystem = storage.bucket(theBucket);
-    bucketFileSystem.projectId=projectId;
-    bucketFileSystem.id=theBucket;
-    bucketFileSystem.name=theBucket;
-    */
-
     const storage = await authFn.getClient(projectId);
     var bucket = storage.bucket(theBucket);
     bucket.projectId=projectId;

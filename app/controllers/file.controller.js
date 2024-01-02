@@ -40,7 +40,7 @@ async function  enableUniformBucketLevelAccess(bucketName, storage) {
     }, 
   });
 }
-async function cacheFiles(testProd,fileName){
+async function cacheFiles(testProd,fileName,bucketName){
   var listFiles=[];
   var i=0;
   if (tabFile.has(0)){
@@ -50,9 +50,10 @@ async function cacheFiles(testProd,fileName){
     const data = await configData.getFilesToCache(testProd);
     if (data.status === 200){
       for (var i=0; i<data.tab.length; i++){
-        const classFile={file:'',updated:true};
+        const classFile= {file:'',bucket:'',updated:true};
         listFiles.push(classFile);
-        listFiles[i].file=data.tab[i];
+        listFiles[i].file=data.tab[i].object;
+        listFiles[i].bucket=data.tab[i].bucket;
       }
       tabFile.set(0, listFiles);
     } else {
@@ -62,7 +63,7 @@ async function cacheFiles(testProd,fileName){
   } else {
     listFiles = tabFile.get(0);
   }
-  for (i=0; i<listFiles.length && fileName!==listFiles[i].file; i++){}
+  for (i=0; i<listFiles.length && (fileName!==listFiles[i].file || bucketName!==listFiles[i].bucket);  i++){}
   return({tab:listFiles,record:i});
 }
 
@@ -75,9 +76,10 @@ const insertCacheFile = async (req, res) => {
   var myData=await cacheFiles(req.params.testProd,"");
   for (var i=0; i<myData.tab.length && myData.tab[i].file!==req.params.name; i++){}
   if (i===myData.tab.length){
-    const classFile={file:'',updated:true};
+    const classFile={file:'',bucket:"",updated:true};
     myData.tab.push(classFile);
     myData.tab[myData.tab.length-1].file=req.params.name;
+    myData.tab[myData.tab.length-1].bucket=req.query.bucket;
     tabFile.set(0, myData.tab);
   }
   return res.send({status:200,cacheFiles:myData.tab});
@@ -157,7 +159,7 @@ const getTextFile= async (req, res) => {
 
 const getFileContent = async (req, res) => {
   try {
-    const theValue=await cacheFiles(req.params.testProd, req.params.name);
+    const theValue=await cacheFiles(req.params.testProd, req.params.name, req.query.bucket);
     var listFiles=theValue.tab;
     const i = theValue.record;
     if (i<listFiles.length  && (cache.get(i)) && listFiles[i].updated===false) {
@@ -309,10 +311,10 @@ const upload =async (req, res) => {
          */
 
 
-        const theValue=await cacheFiles(req.params.testProd, req.params.name);
+        const theValue=await cacheFiles(req.params.testProd, req.params.name,req.query.bucket);
         var listFiles=theValue.tab;
         const i = theValue.record;
-        if (i<listFiles.length  && listFiles[i].file === req.params.name) {
+        if (i<listFiles.length  && listFiles[i].file === req.params.name && listFiles[i].bucket === req.query.bucket) {
             console.log('flag field updated to true for file ' + req.params.name + ' in cache nb' + i);
             listFiles[i].updated=true;
             tabFile.set(0, listFiles);
@@ -336,7 +338,7 @@ const getCacheConsole=async (req, res) => {
   }
 }
 
-async function fillCacheConsole(theMsg, content){
+function fillCacheConsole(theMsg, content){
  
   var theTab=[];
   if (cacheConsole.has(0)){
@@ -411,10 +413,10 @@ const uploadMetaPerso =async (req, res) => {
       res.status(505).send({ message: err.message });
     });
     blobStream.on("finish", async (data) => {
-    const theValue=await cacheFiles(req.params.testProd, req.params.name);
+    const theValue=await cacheFiles(req.params.testProd, req.params.name, req.query.bucket);
     var listFiles=theValue.tab;
     const i = theValue.record;
-    if (i<listFiles.length  && listFiles[i].file === req.params.name) {
+    if (i<listFiles.length  && listFiles[i].file === req.params.name && listFiles[i].bucket === req.query.bucket) {
         console.log('flag field updated to true for file ' + req.params.name + ' in cache nb' + i);
         listFiles[i].updated=true;
         tabFile.set(0, listFiles);
@@ -654,7 +656,8 @@ module.exports = {
   getMedialinkContent,
   getTextFile,
   insertCacheFile,
-  getCacheConsole
+  getCacheConsole,
+  fillCacheConsole,
 
   
 };

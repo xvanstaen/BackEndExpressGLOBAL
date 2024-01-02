@@ -90,15 +90,20 @@ module.exports.getConfigData = async function (testProd, searchString) {
 }
 
 module.exports.getFilesToCache = async function (testProd) {
-
+  var filesToCache=[];
+  var testConfig="";
   if ( cache.has(0)){ // should always be true
     if (testProd==='prod'){
-      var testConfig=cache.get(0);
+      testConfig=cache.get(0);
     } else {
       testConfig=cache.get(1);
     }
-    
-   const filesToCache = testConfig.filesToCache;
+    for (var i=0; i<testConfig.filesToCache.length; i++){
+        const theClass= {bucket:"",object:""};
+        filesToCache.push(theClass);
+        filesToCache[i].bucket=testConfig.filesToCache[i].bucket;
+        filesToCache[i].object=testConfig.filesToCache[i].object;
+    }
 
     return ({status:200, tab:filesToCache});
   } else {

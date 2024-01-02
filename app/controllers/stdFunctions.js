@@ -61,7 +61,9 @@ function fnAddTime(theDate, addHour, addMin){
   function createRecord(fileSystem, inData){
   
     const recordSystem={bucket:"", object:"", byUser:"",
-        IpAddress:"", lock:false, createdAt:"", updatedAt:"", userServerId:0, credentialDate:""}
+        IpAddress:"", lock:false, createdAt:"", updatedAt:"", userServerId:0, credentialDate:"", 
+        timeoutFileSystem:{hh:0, mn:0}
+    }
     
     fileSystem.push(recordSystem);
     fileSystem[fileSystem.length-1].bucket=inData.bucket;
@@ -71,6 +73,8 @@ function fnAddTime(theDate, addHour, addMin){
     fileSystem[fileSystem.length-1].userServerId=inData.userServerId;
     fileSystem[fileSystem.length-1].lock=true;
     fileSystem[fileSystem.length-1].credentialDate=inData.credentialDate;
+    fileSystem[fileSystem.length-1].timeoutFileSystem.hh = inData.timeoutFileSystem.hh;
+    fileSystem[fileSystem.length-1].timeoutFileSystem.mn = inData.timeoutFileSystem.mn;
     /*
     const aDate=Date.now();
     const theDate=new Date(aDate).toUTCString();
@@ -98,6 +102,8 @@ function fnAddTime(theDate, addHour, addMin){
         fileSystem[record].userServerId=inData.userServerId;
         fileSystem[record].IpAddress=inData.IpAddress;
         fileSystem[record].credentialDate=inData.credentialDate;
+        fileSystem[record].timeoutFileSystem.hh = inData.timeoutFileSystem.hh;
+        fileSystem[record].timeoutFileSystem.mn = inData.timeoutFileSystem.mn;
         console.log('validateLock record : createdAt & updatedAt  = ' + myDate + ' for user ' + inData.userServerId);
         return(fileSystem);
     } else {
