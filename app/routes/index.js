@@ -1,38 +1,39 @@
 const express = require("express");
 const router = express.Router();
 
-const controller = require("../controllers/file.controller.js");
-//const mongoConfig =  require("../controllers/config.controller.js");
+const fileCtrl = require("../controllers/file.controller.js");
 const tutorials =  require("../controllers/tutorial.controller.js");
 const fileSystem =  require("../controllers/fileSystem.controller.js");
 const authFn =  require("../controllers/authFn.js");
 const cryptoFn =  require("../controllers/cryptoFn.js");
+const config =  require("../controllers/config.controller.js");
 
 let routes = (app) => {
-  router.post("/upload/:projectId/:name/:testProd/:cacheControl/:contentType", controller.upload);
-  router.post("/uploadMetaPerso/:projectId/:name/:testProd/:cacheControl/:contentType/:metaPerso", controller.uploadMetaPerso);
-  router.post("/updateMeta/:projectId/:testProd/:name/:metaCache/:metaType/:metaPerso", controller.updateMeta);
-  router.get("/listFiles/:projectId/:testProd", controller.getListFiles);
-  router.get("/filesmeta/:projectId/:testProd", controller.getListMetaDataFiles);
-  router.get("/files/:projectId/:testProd/:name", controller.getFileContent);
-  router.get("/textFile/:projectId/:testProd/:name", controller.getTextFile);
-  router.get("/mediaLink/:projectId/:testProd/:name", controller.getMedialinkContent);
+  router.post("/upload/:projectId/:name/:testProd/:cacheControl/:contentType", fileCtrl.upload);
+  router.post("/uploadMetaPerso/:projectId/:name/:testProd/:cacheControl/:contentType/:metaPerso", fileCtrl.uploadMetaPerso);
+  router.post("/updateMeta/:projectId/:testProd/:name/:metaCache/:metaType/:metaPerso", fileCtrl.updateMeta);
+  router.get("/listFiles/:projectId/:testProd", fileCtrl.getListFiles);
+  router.get("/filesmeta/:projectId/:testProd", fileCtrl.getListMetaDataFiles);
+  router.get("/files/:projectId/:testProd/:name", fileCtrl.getFileContent);
+  router.get("/textFile/:projectId/:testProd/:name", fileCtrl.getTextFile);
+  router.get("/mediaLink/:projectId/:testProd/:name", fileCtrl.getMedialinkContent);
 
-  router.get("/meta/:projectId/:testProd/:name", controller.getObjectMeta);
-  router.get("/lBucket/:projectId/:testProd", controller.listBuckets);
-  router.get("/delete/:projectId/:testProd/:name", controller.deleteObject);
-  router.get("/rename/:projectId/:testProd/:SRCname/:DESTname", controller.renameObject);
-  router.get("/move/:projectId/:testProd/:DESTbucket/:SRCname/:DESTname", controller.moveObject);
-  router.get("/copy/:projectId/:testProd/:DESTbucket/:SRCname/:DESTname", controller.copyObject);
+  router.get("/meta/:projectId/:testProd/:name", fileCtrl.getObjectMeta);
+  router.get("/lBucket/:projectId/:testProd", fileCtrl.listBuckets);
+  router.get("/delete/:projectId/:testProd/:name", fileCtrl.deleteObject);
+  router.get("/rename/:projectId/:testProd/:SRCname/:DESTname", fileCtrl.renameObject);
+  router.get("/move/:projectId/:testProd/:DESTbucket/:SRCname/:DESTname", fileCtrl.moveObject);
+  router.get("/copy/:projectId/:testProd/:DESTbucket/:SRCname/:DESTname", fileCtrl.copyObject);
 
-  router.get("/resetCacheFile/:projectId/:testProd/:fileName", controller.resetCacheFile);
-  router.get("/getCacheFile/:projectId/:testProd", controller.getCacheFile);
-  router.get("/reloadCacheFile/:projectId/:testProd", controller.reloadCacheFile);
-  router.get("/insertCacheFile/:projectId/:testProd/:name", controller.insertCacheFile);
+  router.get("/resetCacheFile/:projectId/:testProd/:fileName", fileCtrl.resetCacheFile);
+  router.get("/getCacheFile/:projectId/:testProd", fileCtrl.getCacheFile);
+  router.get("/reloadCacheFile/:projectId/:testProd", fileCtrl.reloadCacheFile);
+  router.get("/insertCacheFile/:projectId/:testProd/:name", fileCtrl.insertCacheFile);
 
-  router.get("/getCacheConsole/:projectId/:testProd", controller.getCacheConsole);
+  router.get("/getCacheConsole/:projectId/:testProd", fileCtrl.getCacheConsole);
+  router.get("/resetCacheConsole/:projectId/:testProd", fileCtrl.resetCacheConsole);
 
-  router.get("/checkLogin/:projectId/:testProd/:userId/:psw/", controller.checkLogin);
+  router.get("/checkLogin/:projectId/:testProd/:userId/:psw/", fileCtrl.checkLogin);
 
   router.get("/encryptFn/:projectId/:testProd/:inData/:inKey/:inMethod/:inAuth", cryptoFn.encryptFn);
   router.get("/decryptFn/:projectId/:testProd/:inData/:inKey/:inMethod/:inAuth", cryptoFn.decryptFn);
@@ -52,9 +53,14 @@ let routes = (app) => {
 /*============ CONFIG  =============*/
   // Retrieve configServer file
 
-  //router.get("//", tutorials.getConfigServer);
-  router.get("/config/:db/:testProd/:collection", tutorials.findConfig);
-  router.get("/resetConfig/:db/:testProd/:collection", tutorials.resetConfig);
+  //router.get("//", tutorials.getConfigServer);getSpecialConfig
+  router.get("/config/:db/:testProd/:collection", config.findConfig);
+  router.get("/configByString/:db/:testProd/:collection", config.findConfig); // contains the searchString query
+  router.get("/resetConfig/:db/:testProd/:collection", config.resetConfig);
+  router.get("/allConfig/:db/:testProd/:collection", config.getAllConfig);
+  router.get("/allConfigByString/:db/:testProd/:collection", config.getAllConfig); // contains the searchString query
+  router.put("/updateConfig/:db/:testProd/:collection/:id", config.updateConfig);
+  router.put("/uploadConfig/:db/:testProd/:collection", config.uploadConfig);``
 
 
 /*============ TUTORIALS =============*/

@@ -18,7 +18,7 @@ app.set('trust proxy', true);
 const initRoutes = require("./app/routes");
 initRoutes(app);
 
-const mongoConfig = require("./app/controllers/tutorial.controller.js");
+const mongoConfig = require("./app/controllers/config.controller.js");
 
 mongoConfig.getConfigServer()
 .then( async (res) => {
@@ -51,7 +51,7 @@ mongoConfig.getConfigServer()
 
 
 function displayStatus(code){
-  const myVersion="Version 01Jan2024 V0-1";
+  const myVersion="Version 02Jan2024 V0-1";
   var configData = "";
   if (code===200){
     configData=" configData retrieved in MongoDB";

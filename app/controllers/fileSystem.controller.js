@@ -48,12 +48,12 @@ const onFileSystem = async (req, res) => {
             const timeOutValue=fnAddTime(myFileSystem[i].updatedAt,myFileSystem[i].timeoutFileSystem.hh,myFileSystem[i].timeoutFileSystem.mn);
             const currentTime=defineMyDate();
             if (Number(currentTime) <= Number(timeOutValue)){
-              const theMsg='server was reset and file is locked by another user';
+              const theMsg='File System: server was reset and file is locked by another user';
               console.log(theMsg);
               fileController.fillCacheConsole(theMsg,{status:956})
               return res.send({msg: theMsg, status:956});   
             }
-              const theMsg='File System: server was reset, file was locked by another user but timeout occured';
+              const theMsg='File System: server was reset, file was locked by another user but timeout occured;';
               console.log(theMsg);
               const theCode=fileController.fillCacheConsole(theMsg,{updatedAt:myFileSystem[i].updatedAt,timeOut:timeOutValue,currentTime:currentTime});
           } 
@@ -74,13 +74,11 @@ const onFileSystem = async (req, res) => {
             myFileSystem.splice(i,0);
             const code = await saveFS(req.params.projectId, req.query.bucket,tabLock[req.params.iWait].objectName,JSON.stringify(myFileSystem),tabLock[req.params.iWait]);
             const theMsg='File System: server was reset and same user re-accesses the file; new FS record is';
-            fileController.fillCacheConsole(theMsg,myFileSystem);
-            console.log(theMsg);
         } else {
-          const theMsg='File System: server was reset and same user re-accesses the file which indeed is empty';
-            fileController.fillCacheConsole(theMsg,myFileSystem);
-            console.log(theMsg);
+            const theMsg='File System: server was reset and same user re-accesses the file which indeed is empty';
         }
+        fileController.fillCacheConsole(theMsg,myFileSystem);
+        console.log(theMsg);
       /** } */ 
 
 

@@ -338,6 +338,12 @@ const getCacheConsole=async (req, res) => {
   }
 }
 
+const resetCacheConsole=async (req, res) => {
+  var theTab=[];
+  cacheConsole.set(0, theTab);
+  return res.send({msg:"nothing found in cacheConsole",status:0})
+}
+
 function fillCacheConsole(theMsg, content){
  
   var theTab=[];
@@ -658,6 +664,7 @@ module.exports = {
   insertCacheFile,
   getCacheConsole,
   fillCacheConsole,
+  resetCacheConsole
 
   
 };

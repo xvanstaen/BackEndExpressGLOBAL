@@ -3,8 +3,35 @@
   module.exports = mymongoose => {
     var schema = mymongoose.Schema(
       {
-        GoogleProjectId:string= '',
-        baseUrl:string= ''
+        id:String,
+        title:String,
+        SourceJson_Google_Mongo:String,
+        test_prod:String,
+        GoogleProjectId:String,
+        Mongo_Google:String,
+        baseUrl:String,
+        IpAddress:String,
+        credentialDate:String,
+        bucketFileSystem:String,
+        objectFileSystem:String,
+        timeoutFileSystem:{
+          hh:Number,
+          mn:Number,
+          bufferTO:{
+            hh:Number,
+            mn:Number
+          },
+          bufferInput:{
+              hh:Number,
+              mn:Number
+          }
+        },
+        filesToCache:[{bucket:String,object:String}],
+        UserSpecific:[{theId:String,theType:String,log:Boolean}],
+        PointOfRef:{
+          bucket:String,
+          file:String,
+          },
       },
       { timestamps: true }
     );
