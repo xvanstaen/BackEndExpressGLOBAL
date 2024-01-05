@@ -3,184 +3,296 @@
 const mongoose = require("mongoose");
 mongoose.set('strictQuery', false);
 mongoose.Promise = global.Promise;
-const db = {};
-db.tutorials = require("../models/tutorial.model")(mongoose);
-db.tutorials.collection.name='tutorials';
-const Tutorial = db.tutorials;
+var dbTutorial = {};
+dbTutorial.tutorials = require("../models/tutorial.model")(mongoose);
+dbTutorial.tutorials.collection.name='tutorials';
+const Tutorial = dbTutorial.tutorials;
 /* ================ */
+var dbFS = {};
+dbFS.FileSyst = require("../models/fileSystem.model")(mongoose);
+dbFS.FileSyst.collection.name='filesystems';
+const fileSystem = dbFS.FileSyst;
+var dbUsr = {};
+dbUsr.usrPSW = require("../models/usrPSW.model")(mongoose);
+dbUsr.usrPSW.collection.name='usrpsws';
+const usrPSW = dbUsr.usrPSW;
 
 const accessMongo = require("./accessMongo.js"); 
 
 /* ================ */
 
-
-// Create and Save a new Tutorial
-exports.insert = (req, res) => {
-  if (req.query.db!==''){
-    current_dbName=req.query.db;
+async function accessDB(dbName,collection,body){
+  var record='';
+  var error = 0;
+  var theCollection="";
+  if (dbName!==''){
+    current_dbName=dbName;
+  } else {
+    return res.send({ message: "Data base field is empty",status:520 });
   }
-  accessMongo.accessMongo(Tutorial, req.query.db);
-    if (!req.body.title) {
-       res.status(450).send({ message: "Content cannot be empty!" });
-       return;
-      }
-  // Create a Tutorial
-  const objectTutorial = new Tutorial({
-    title: req.body.title,
-    description: req.body.description,
-    published: req.body.published ? req.body.published : false
-  });
-  // Save Tutorial in the database
- 
-  Tutorial.save(objectTutorial)
-    .then(data => {
-       res.status(200).send(data);
-       return;
-      })
-    .catch(err => {
-        return res.status(500).send({
-            message:
-            err.message || "Some error occurred while creating the Tutorial."
-          });
-       });
-};
+  if (collection === Tutorial.collection.name){
+    await accessMongo.accessMongo(Tutorial, current_dbName);
+    theCollection=Tutorial;
+    if (body!==""){
+      record=new Tutorial(body);
+    }
+    
+  } else if (collection === fileSystem.collection.name){
+    await accessMongo.accessMongo(fileSystem, current_dbName);
+    theCollection=fileSystem;
+    if (body!==""){
+      record=new fileSystem(body);
+    }
+    
+  } else if (collection === usrPSW.collection.name){
 
-
-
-// Find a single Tutorial with an id
-exports.findOne = (req, res) => {
-    accessMongo.accessMongo(Tutorial, req.query.db);
-    const id = req.params.id;
-
-    Tutorial.findById(id)
-      .then(data => {
-
-        if (!data)
-        return  res.status(404).send({ message: "Not found Tutorial with id " + id });
-        else return res.send(data);
-      })
-      .catch(err => {
- 
-            return res
-              .status(500)
-              .send({ message: "Error retrieving Tutorial with id=" + id });
-
-        });
-       
-};
-// Update a Tutorial by the id in the request
-exports.update = (req, res) => {
-    accessMongo.accessMongo(Tutorial, req.query.db);
-
-    if (!req.body) {
-        return res.status(400).send({
-          message: "Data to update can not be empty!"
-        });
-      }
-      const id = req.params.id;
-      Tutorial.findByIdAndUpdate(id, req.body, { useFindAndModify: false })
-        .then(data => {
+    
+    await accessMongo.accessMongo(usrPSW, current_dbName);
+    theCollection=usrPSW;
+    if (body!==""){
+      record=new usrPSW(body);
+    }
+  } else {
+    error = 404;
+  }
   
-          if (!data) {
-            return res.status(404).send({
-              message: `Cannot update Tutorial with id=${id}. Maybe Tutorial was not found!`
-            });
-          } else return res.send({ message: "Tutorial was updated successfully." });
-        })
-        .catch(err => {
-       
-                return res.status(500).send({
-                  message: "Error updating Tutorial with id=" + id
-                });
-           
-        });
+  return ({col:theCollection,rec:record, error:error})
+}
+
+// Create and Save a new record
+exports.save = async (req, res) => {
+  var record="";
+  if (req.params.db!==''){
+    current_dbName=req.params.db;
+  } else {
+    return res.status(520).send({status:520, message:"Data base field is empty"});
+  }
+  if (req.params.collection === Tutorial.collection.name){
+    await accessMongo.accessMongo(Tutorial, current_dbName);
+    record=new Tutorial(req.body);
+  } else if (req.params.collection === fileSystem.collection.name){
+    await accessMongo.accessMongo(fileSystem, current_dbName);
+    record=new fileSystem(req.body);
+  } else if (req.params.collection === usrPSW.collection.name){
+    record=new usrPSW(req.body);
+    await accessMongo.accessMongo(usrPSW, current_dbName);
+  } else { return res.send({msg:'collection ' + req.params.collection + ' is invalid', status:404});}
+  
+  try{
+    const resp = await record.save()
+    try {
+        return res.send(resp);
+      }
+    catch(err) {
+        return res.status(510).send({status:510, message:err.message});
+    };
+  }  catch(err) {
+      return res.status(521).send({status:521, message:"FAILURE " + err.message});
+  }; 
+
 };
 
-// Delete a Tutorial with the specified id in the request
-exports.delete = (req, res) => {
-    accessMongo.accessMongo(Tutorial, req.query.db);
+// Find a single record with an id
+exports.findById = async (req, res) => {
+    const theValue=  await accessDB(req.params.db,req.params.collection,"");
+    //accessMongo.accessMongo(Tutorial, req.query.db);
+    if (theValue.message!==undefined){
+      return  res.status(520).send({status:520, message:theValue.message});
+    }
+    if  (theValue.error!==0){
+      return res.status(540).send({status:540, message:'collection ' + req.params.collection + ' is invalid'});
+    }
     const id = req.params.id;
-   
-    Tutorial.findByIdAndRemove(id)
-      .then(data => {
-       
-        if (!data) {
-          return res.status(404).send({
-            message: `Cannot delete Tutorial with id=${id}. Maybe Tutorial was not found!`
-          });
-        } else {
-          return res.send({
-            message: "Tutorial was deleted successfully!"
-          });
-        }
-      })
-      .catch(err => {
-        
-            return res.status(500).send({
-              message: "Could not delete Tutorial with id=" + id
-            });
-      
-      });
-};
-// Delete all Tutorials from the database.
-exports.deleteAll = (req, res) => {
-    accessMongo.accessMongo(Tutorial, req.query.db);
 
-    Tutorial.deleteMany({})
-    .then(data => {
-     
-      return res.send({
-        message: `${data.deletedCount} Tutorials were deleted successfully!`
-      });
-    })
-    .catch(err => {
- 
-          return res.status(500).send({
-            message:
-              err.message || "Some error occurred while removing all tutorials."
-          });
-     
-    });
+    try{
+      const resp = await theValue.col.findById(id)
+      try {
+        if (!resp) {
+          return  res.status(220).send({status:200, message:"Didn't find record with id " + req.params.id});
+        } else {
+          return res.send(resp);
+        }
+      }
+      catch(err) {
+            return res.status(510).send({status:510, message:err.message +  "  record with id=" + req.params.id });
+        };
+    }
+    catch(err) {
+        return res.status(521).send({status:521, message:"FAILURE " + err.message});
+    }; 
+       
 };
-// Find all published Tutorials
-exports.findAllPublished = (req, res) => {
-    accessMongo.accessMongo(Tutorial, req.query.db);
- 
-    Tutorial.find({ published: true })
-    .then(data => {
+// Update a record 
+exports.update = async (req, res) => {
+    //accessMongo.accessMongo(Tutorial, req.query.db);
+    const theValue= await accessDB(req.params.db,req.params.collection,"");
+    //accessMongo.accessMongo(Tutorial, req.query.db);
+    if (theValue.message!==undefined){
+      return  res.status(520).send({status:520, message:theValue.message});
+    }
+    if  (theValue.error!==0){
+      return res.status(540).send({status:540, message:'collection ' + req.params.collection + ' is invalid'});
+    }
+    const id = req.params.id;
+    try{
+      const resp = await theValue.col.findByIdAndUpdate(id, req.body, { useFindAndModify: false })
+      try {
+          if (!resp) {
+            return res.status(220).send({status220, message:
+              "Cannot update record with id=" + id + "Maybe record was not found!"});
+          } else {
+            return res.send({message:"record id " + id + " was updated successfully", status:200});
+          }
+        }
+      catch(err) {
+            return res.status(510).send({status:510, message:err.message + " Error updating record with id=" + req.params.id});
+        };
+  }
+  catch(err) {
+      return res.status(521).send({status:521, message:"FAILURE " + err.message});
+  };  
+};
+
+// Delete a record with the specified id in the request
+exports.deleteById = async (req, res) => {
+  const theValue=await accessDB(req.params.db,req.params.collection,"");
+  //accessMongo.accessMongo(Tutorial, req.query.db);
+  if (theValue.message!==undefined){
+    return  res.status(520).send({status:520, message:theValue.message});
+  }
+  if  (theValue.error!==0){
+    return res.status(540).send({status:540, message:'collection ' + req.params.collection + ' is invalid'});
+  }
+  const id = req.params.id;
+   
+  try{
+    const resp = await theValue.col.findByIdAndRemove(id)
+    try {
+        if (!resp) {
+          return res.status(220).send({status:220, message:"Cannot find record with id=" + id});
+        } else {
+          return res.send({message:'successful deletion of record id ' + id, status:200});
+        }
+      }
+    catch(err) {
+          return res.status(510).send({status:510, message:"Could not delete record with id=" + id});
       
-      return res.send(data);
-    })
-    .catch(err => {
+      };
+  }
+  catch(err) {
+      return res.status(521).send({status:521, message:"FAILURE " + err.message});
+  };  
+};
+
+// Delete a record based on a condition
+exports.deleteByString = async (req, res) => {
+  const theValue=await accessDB(req.params.db,req.params.collection,"");
+  //accessMongo.accessMongo(Tutorial, req.query.db);
+  if (theValue.message!==undefined){
+    return  res.status(520).send({status:520, message:theValue.message});
+  }
+  if  (theValue.error!==0){
+    return res.status(540).send({status:540, message:'collection ' + req.params.collection + ' is invalid'});
+  }
+  const id = req.params.id;
+  var searchString = req.query.searchString;
+  var fieldSearch=req.params.fieldSearch;
      
-          return res.status(500).send({
-            message:
-              err.message || "Some error occurred while retrieving tutorials."
-          });
-     
-    });
+  const query=  { [fieldSearch]: searchString } ;
+  try{
+    const resp = await theValue.col.deleteOne(query) // deleteOne
+    try {
+        if (resp.deletedCount===0) {
+          return res.status(220).send({status:220, message:'no record matches the search criteria'});
+        } else {
+          return res.send(resp);// works when EXACT MATCHh
+        }
+      }
+    catch(err) {
+          return res.status(510).send({status:510, message:"Could not delete record with search string" + req.query.searchString});
+      };
+  }
+  catch(err) {
+      return res.status(521).send({status:521, message:"FAILURE " + err.message});
+  };
+}; 
+// Delete all records in a given collection
+exports.deleteAll = async (req, res) => {
+  const theValue=await accessDB(req.params.db,req.params.collection,"");
+  //accessMongo.accessMongo(Tutorial, req.query.db);
+  if (theValue.message!==undefined){
+    return  res.status(520).send({status:520, message:theValue.message});
+  }
+  if  (theValue.error!==0){
+    return res.status(540).send({status:540, message:'collection ' + req.params.collection + ' is invalid'});
+  }
+  try{
+    const resp = await theValue.col.deleteMany({})
+    try {
+      return res.send({ message: `${resp.deletedCount} records were deleted successfully!`, status:200});
+      }
+    catch(err) {
+      return res.status(510).send({status:510, message:"error occurred while removing all records."});
+      };
+  }
+  catch(err) {
+      return res.status(521).send({status:521, message:"FAILURE " + err.message});
+  };
+};
+
+// Find all records
+exports.findAll = async (req, res) => {
+  var theResponse="";
+  const theValue=await accessDB(req.params.db,req.params.collection,"");
+  if (theValue.message!==undefined){
+    return  res.status(520).send({status:520, message:theValue.message});
+  }
+  if  (theValue.error!==0){
+    return res.status(540).send({status:540, message:'collection ' + req.params.collection + ' is invalid'});
+  }
+  
+  try{
+    theValue.col.find() // { published: true }
+      .then(data => {
+          return res.send(data);
+        })
+      .catch(err => {
+          return res.status(510).send({status:510, message:err.message + "  error occurred while retrieving all records"});
+        });
+    }
+  catch(err) {
+      return res.status(521).send({status:521, message:"FAILURE " + err.message});
+    };
+  
 };
 
 // Retrieve all Tutorials from the database.
-exports.findByTitle = (req, res) => {
-  current_dbName='XMVITdb';
-  var title = req.query.title;
-  loop=0;
-  // var isSent=false;
-  var condition = title ? { title: { $regex: new RegExp(title), $options: "i" } } : {};
-  const connected = accessMongo.accessMongo(Tutorial, req.query.db).then(result => {
-    Tutorial.find(condition)
-      .then(data => {
+exports.findByCriteria = async (req, res) => {
+  const theValue=await accessDB(req.params.db,req.params.collection,"");
+  if (theValue.message!==undefined){
+    return  res.status(520).send({status:520, message:theValue.message});
+  }
+  if  (theValue.error!==0){
+    return res.status(540).send({status:540, message:'collection ' + req.params.collection + ' is invalid'});
+  }
+
+  var searchString = req.query.searchString;
+  var fieldSearch=req.params.fieldSearch;
+ 
+  var condition = searchString ? { [fieldSearch]: { $regex: new RegExp(searchString), $options: "i" } } : {};
+  try{
+    const data = await theValue.col.find(condition);
+    try{
         return res.send(data);
-      })
-      .catch(err => {
-            return res.status(500).send({
-              message:
-                err.message || "Some error occurred while retrieving tutorials."
-            });
-      });
-  });
-};
+    }
+    catch(err) {
+        return res.status(510).send({status:510, message:err.message || "  error occurred while retrieving record by criteria"});
+    };
+  }
+  catch(err) {
+      return res.status(521).send({status:520, message:"FAILURE " + err.message});
+  };
+}
 
 
 

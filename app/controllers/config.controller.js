@@ -185,7 +185,6 @@ exports.updateConfig = (req, res) => {
 exports.uploadConfig = (req, res) => {
   accessMongo.accessMongo(CONFIG, dbName);
   var configData=new CONFIG(req.body);
-  const id='123456';
   configData.save()
     .then(data => {
       return res.status(200).send(data);

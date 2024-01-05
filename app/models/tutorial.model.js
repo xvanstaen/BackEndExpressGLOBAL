@@ -25,6 +25,7 @@ module.exports = mongoose => {
  * So the Mongoose model could be modified as following code: 
 **/
   module.exports = mongoose => {
+
     var schema = mongoose.Schema(
       {
         title: String,
@@ -38,7 +39,7 @@ module.exports = mongoose => {
       object.id = _id;
       return object;
     });
-    const Tutorial = mongoose.model("tutorial", schema);
+    const Tutorial = mongoose.model("tutorials", schema);
     return Tutorial;
   };
  

@@ -53,7 +53,6 @@ let routes = (app) => {
 /*============ CONFIG  =============*/
   // Retrieve configServer file
 
-  //router.get("//", tutorials.getConfigServer);getSpecialConfig
   router.get("/config/:db/:testProd/:collection", config.findConfig);
   router.get("/configByString/:db/:testProd/:collection", config.findConfig); // contains the searchString query
   router.get("/resetConfig/:db/:testProd/:collection", config.resetConfig);
@@ -64,23 +63,24 @@ let routes = (app) => {
 
 
 /*============ TUTORIALS =============*/
-  // Retrieve all Tutorials
-  router.get("/tuto", tutorials.findByTitle);
 
-  // Create a new Tutorial
-  router.post("/tuto",  tutorials.insert);
+  // Find by ?
+  router.get("/findTutByString/:db/:testProd/:collection/:fieldSearch", tutorials.findByCriteria); // contains the searchString query
+  // Retrieve all records
+  router.get("/findTutAll/:db/:testProd/:collection", tutorials.findAll);
+  // Retrieve a single record with id
+  router.get("/findTutById/:db/:testProd/:collection/:id", tutorials.findById);
+  // Save a new record
+  router.put("/uploadTut/:db/:testProd/:collection",  tutorials.save);
+  // Update a record with id
+  router.put("/updateTut/:db/:testProd/:collection/:id", tutorials.update);
+  // Delete a record with id
+  router.get("/deleteTut/:db/:testProd/:collection/:id", tutorials.deleteById);
+  // Delete a record with string
+  router.get("/deleteTutByString/:db/:testProd/:collection/:fieldSearch", tutorials.deleteByString); // contains the searchString query
+  // Delete all records
+  router.get("/deleteAllTut/:db/:testProd/:collection", tutorials.deleteAll);
 
-  // Retrieve all published Tutorials
-  router.get("/published", tutorials.findAllPublished);
-  // Retrieve a single Tutorial with id
-  router.get("/:id", tutorials.findOne);
-  // Update a Tutorial with id
-  router.put("/:id", tutorials.update);
-  // Delete a Tutorial with id
-  router.delete("/:id", tutorials.delete);
-  // Create a new Tutorial
-  router.delete("/", tutorials.deleteAll);
-  //app.use('/api/tutorials', router);
 
 
   app.use(router);

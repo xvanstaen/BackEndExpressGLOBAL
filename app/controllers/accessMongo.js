@@ -22,7 +22,7 @@ var options = {
 var previous_dbName = "";
 
 async function accessMongo(idDataBase, current_dbName){
-    if (previous_dbName!== current_dbName){
+  if (previous_dbName!== current_dbName){
         if (previous_dbName!=='') {
           // seems mongoose does not accept to connect to more than one database
           // db.$namedb keeps the value of the first db opened 
