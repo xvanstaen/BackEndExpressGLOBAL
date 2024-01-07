@@ -19,6 +19,8 @@ const usrPSW = dbUsr.usrPSW;
 
 const accessMongo = require("./accessMongo.js"); 
 
+const fileController = require("./file.controller");
+
 /* ================ */
 
 async function accessDB(dbName,collection,body){
@@ -242,7 +244,7 @@ exports.deleteAll = async (req, res) => {
 
 // Find all records
 exports.findAll = async (req, res) => {
-  var theResponse="";
+  fileController.fillCacheConsole('in findAll req.params.collection=',req.params.collection);
   const theValue=await accessDB(req.params.db,req.params.collection,"");
   if (theValue.message!==undefined){
     return  res.status(520).send({status:520, message:theValue.message});
@@ -261,6 +263,7 @@ exports.findAll = async (req, res) => {
         });
     }
   catch(err) {
+      fileController.fillCacheConsole('in findAll status=521', err.message);
       return res.status(521).send({status:521, message:"FAILURE " + err.message});
     };
   
