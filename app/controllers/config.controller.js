@@ -27,7 +27,7 @@ var cache = new nodecache;
 
 module.exports.getConfigServer = async function () {
 
-   const myValue = await getConfigServer();
+   const myValue = await retrieveConfigServer();
     try{
       console.log('ConfigServer = ' + JSON.stringify(myValue));
       return (myValue)
@@ -40,19 +40,23 @@ module.exports.getConfigServer = async function () {
 
 module.exports.getConfigData = async function (testProd, searchString) {
 
-  //var searchString = undefined;
-  var condition = searchString ? { bsearchString: { $regex: new RegExp(searchString), $options: "i" } } : {};
+  var searchString = undefined;
+  var condition = searchString ? { "test_prod": { $regex: new RegExp(searchString), $options: "i" } } : {};
+  var i=0;
   try {
-    const theValue = await CONFIG.find(condition);
+    const theValue = await CONFIG.find(condition); 
     if (theValue.length!==0){
       testData=JSON.stringify(theValue);
       const record = JSON.parse(testData);
-      cache.set(0, record[0]);
-      cache.set(1, record[1]);
+      for (i=0; i<record.length; i++){
+        cache.set(i, record[i]);
+      }
+      //cache.set(0, record[0]);
+      //cache.set(1, record[1]);
 
       //return ({status:200,config:data});
       console.log('cache of config data is set up; status=200');
-      return ({status:200,configProd:record[0],configTest:record[1]});
+      return ({status:200,configProd:record[0],configTest:record[1], nbRecords:i});
     } else {
       console.log('pb to retrieve config data; status=510');
       return ({status:510,err:'problem to retrieve content of configDB'});
@@ -68,7 +72,7 @@ module.exports.getFilesToCache = async function (testProd) {
   var filesToCache=[];
   var testConfig="";
   if ( cache.has(0)){ // should always be true
-    if (testProd==='prod'){
+    if (testProd.toLowerCase()==='prod'){
       testConfig=cache.get(0);
     } else {
       testConfig=cache.get(1);
@@ -76,8 +80,14 @@ module.exports.getFilesToCache = async function (testProd) {
     for (var i=0; i<testConfig.filesToCache.length; i++){
         const theClass= {bucket:"",object:""};
         filesToCache.push(theClass);
-        filesToCache[i].bucket=testConfig.filesToCache[i].bucket;
-        filesToCache[i].object=testConfig.filesToCache[i].object;
+        if (testConfig.filesToCache[i].bucket!==undefined){
+          filesToCache[i].bucket=testConfig.filesToCache[i].bucket;
+          filesToCache[i].object=testConfig.filesToCache[i].object;
+        } else {
+          filesToCache[i].bucket="";
+          filesToCache[i].object=testConfig.filesToCache[i];
+        }
+        
     }
 
     return ({status:200, tab:filesToCache});
@@ -86,7 +96,7 @@ module.exports.getFilesToCache = async function (testProd) {
   }
 }
 
-getConfigServer  = async function () {
+retrieveConfigServer  = async function () {
   /*
        current_dbName='ConfigDB';
        db.config.collection.collectionName='configServer';
@@ -104,11 +114,17 @@ getConfigServer  = async function () {
   }
 
 exports.resetConfig = (req, res) => {
+  var i=0;
+  for (i=0; cache.has(i); i++){
+    cache.set(i, "");
+  }
+  /*
   if ( cache.has(0)){
     cache.set(0, "");
     cache.set(1, "");
   }
-  return res.status(200).send({message:"cache for configuration is reset"});
+  */
+  return res.status(200).send({message:"cache for configuration (' + i ' records) is reset"});
 }
 
 // Retrieve config from the database.

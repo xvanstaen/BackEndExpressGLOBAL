@@ -32,29 +32,29 @@ mongoConfig.getConfigServer()
         } else {
           console.log('in server.js - config data is not returned; status code = ' + res.status) ;
         }
-        displayStatus(res.status);
+        displayStatus(res.status, res.nbRecords);
       })
       .catch ((err) => {
         console.log(' ### config data is not returned, err='+err);
-        displayStatus(501);
+        displayStatus(501,0);
       })
   } else {
     console.log(' *** problem to open MongoDB, err='+ res.status);
-    displayStatus(502);
+    displayStatus(502,0);
   }
 })
 .catch( (err) => {
   console.log(' ==> problem to open MongoDB, err='+ err);
-    displayStatus(503);
+    displayStatus(503,0);
 })
 
 
 
-function displayStatus(code){
-  const myVersion="Version 07Jan2024 V0-1";
+function displayStatus(code, nbRecords){
+  const myVersion="Version 07Jan2024 V0-2";
   var configData = "";
   if (code===200){
-    configData=" configData retrieved in MongoDB";
+    configData=" configData (" + nbRecords + "found) retrieved in MongoDB";
   } else {
     configData=" ISSUE - configData NOT retrieved in MongoDB; error code="+code;
   }
