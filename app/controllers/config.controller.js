@@ -23,6 +23,8 @@ const accessMongo = require("./accessMongo.js");
 const nodecache = require('node-cache');
 var cache = new nodecache;
 
+
+const fileController = require("./file.controller");
 /* ================ */
 
 module.exports.getConfigServer = async function () {
@@ -97,20 +99,16 @@ module.exports.getFilesToCache = async function (testProd) {
 }
 
 retrieveConfigServer  = async function () {
-  /*
-       current_dbName='ConfigDB';
-       db.config.collection.collectionName='configServer';
-       db.config.collection.name='configServer';
- */
-       const mongoStatus = await accessMongo.accessMongo(CONFIG, dbName);
-       try {
-             return (mongoStatus)
-             }
-        catch (err) {
-          console.log(err);
-          return (err);
-        }
-
+  db.config.collection.collectionName=req.params.collection;
+  db.config.collection.name=req.params.collection;
+  const mongoStatus = await accessMongo.accessMongo(CONFIG, req.params.db);
+    try {
+      return (mongoStatus)
+    }
+    catch (err) {
+      console.log(err);
+      return (err);
+    }
   }
 
 exports.resetConfig = (req, res) => {
@@ -129,7 +127,7 @@ exports.resetConfig = (req, res) => {
 
 // Retrieve config from the database.
 // const findCollection = async (req, res) => {
-exports.findConfig = (req, res) => {
+exports.findConfig = async  (req, res) => {
   //console.log('findCollection/configServer');
   if ( cache.has(0) && cache.get(0)!==""){
     if (req.params.testProd==='prod'){
@@ -142,36 +140,60 @@ exports.findConfig = (req, res) => {
   } else {
         if (req.params.db!==''){
           current_dbName=req.params.db;
-        }
-
-        var searchString = req.query.searchString;
-
+        } 
         db.config.collection.collectionName=req.params.collection;
         db.config.collection.name=req.params.collection;
+        await accessMongo.accessMongo(CONFIG, req.params.db);
 
-        var condition = searchString ? { searchString: { $regex: new RegExp(searchString), $options: "i" } } : {};
-
-        accessMongo.accessMongo(CONFIG, dbName).then
-        (result => {
-          CONFIG.find(condition)
-                .then(data => {
-                  testData=JSON.stringify(data);
-                  const record = JSON.parse(testData);
-                  cache.set(0, record[0]); // prod
-                  cache.set(1, record[1]); // test
-                  //cache.set(0, data);
-                  return res.send(data);
-                })
-                .catch(err => {
-                      return res.status(500).send({ message:err.message || "Some error occurred while retrieving config"});
-                });
-          });
+        CONFIG.find()
+            .then(data => {
+                testData=JSON.stringify(data);
+                const record = JSON.parse(testData);
+                cache.set(0, record[0]); // prod
+                cache.set(1, record[1]); // test
+                return res.send(data);
+            })
+            .catch(err => {
+                return res.status(500).send({ message:err.message || "Some error occurred while retrieving config"});
+            });
       }
 }
 
+exports.findConfigBytring = async (req, res) => {
+  //console.log('findCollection/configServer');
+  var searchString = req.query.searchString;
+  if (searchString!==undefined && searchString!=="" && req.params.searchField!=="Nil"){
+    
+  } else {
+    return res.status(530).send({ message:"At least one search parameter (string and/or field) is invalid ", status:530});
+  }
+  var condition = searchString ? { [req.params.searchField]: { $regex: new RegExp(searchString), $options: "i" } } : {};    
+  if (req.params.db!==''){
+      current_dbName=req.params.db;
+  }
+  db.config.collection.collectionName=req.params.collection;
+  db.config.collection.name=req.params.collection;
+  await accessMongo.accessMongo(CONFIG, req.params.db);
+  try{
+      CONFIG.find(condition)
+          .then(data => {
+              return res.send(data);
+          })
+          .catch(err => {
+              return res.status(500).send({ message:err.message || "Some error occurred while retrieving config"});
+          });
+  }
+  catch(err) {
+    return res.status(521).send({status:521, message:"FAILURE " + err.message});
+  }; 
+
+}
+
 // Update configServer by the id in the request
-exports.updateConfig = (req, res) => {
-  accessMongo.accessMongo(CONFIG, dbName);
+exports.updateConfig = async (req, res) => {
+  db.config.collection.collectionName=req.params.collection;
+  db.config.collection.name=req.params.collection;
+  await accessMongo.accessMongo(CONFIG, req.params.db);
 
   if (!req.body) {
       return res.status(400).send({
@@ -198,8 +220,11 @@ exports.updateConfig = (req, res) => {
 };
 
 // Save config
-exports.uploadConfig = (req, res) => {
-  accessMongo.accessMongo(CONFIG, dbName);
+exports.uploadConfig = async (req, res) => {
+
+  db.config.collection.collectionName=req.params.collection;
+  db.config.collection.name=req.params.collection;
+  await accessMongo.accessMongo(CONFIG, req.params.db);
   var configData=new CONFIG(req.body);
   configData.save()
     .then(data => {
@@ -214,22 +239,15 @@ exports.uploadConfig = (req, res) => {
 
 }
 
-module.exports.getAllConfig  = (req, res) => {
-
-  if (req.params.db!==''){
-    current_dbName=req.params.db;
-  }
-
-  var searchString = req.query.searchString;
+module.exports.getAllConfig  =  async (req, res) => {
+  fileController.fillCacheConsole('in getAllConfig req.params.collection='+req.params.collection, " req.query.searchString=" + req.query.searchString);
 
   db.config.collection.collectionName=req.params.collection;
   db.config.collection.name=req.params.collection;
-
-  var condition = searchString ? { searchString: { $regex: new RegExp(searchString), $options: "i" } } : {};
-
-  accessMongo.accessMongo(CONFIG, dbName).then
+  
+  await  accessMongo.accessMongo(CONFIG, req.params.db).then
   (result => {
-    CONFIG.find(condition)
+    CONFIG.find()
           .then(data => {
             testData=JSON.stringify(data);
             const record = JSON.parse(testData);
@@ -240,6 +258,7 @@ module.exports.getAllConfig  = (req, res) => {
                 return res.status(500).send({ message:err.message || "Some error occurred while retrieving config"});
           });
     });
+  
 }
 
 

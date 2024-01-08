@@ -54,10 +54,9 @@ let routes = (app) => {
   // Retrieve configServer file
 
   router.get("/config/:db/:testProd/:collection", config.findConfig);
-  router.get("/configByString/:db/:testProd/:collection", config.findConfig); // contains the searchString query
+  router.get("/configByString/:db/:testProd/:collection/:searchField", config.findConfig); // contains the searchString query
   router.get("/resetConfig/:db/:testProd/:collection", config.resetConfig);
-  router.get("/allConfig/:db/:testProd/:collection", config.getAllConfig);
-  router.get("/allConfigByString/:db/:testProd/:collection", config.getAllConfig); // contains the searchString query
+  router.get("/allConfig/:db/:testProd/:collection/:searchBucket", config.getAllConfig);
   router.put("/updateConfig/:db/:testProd/:collection/:id", config.updateConfig);
   router.put("/uploadConfig/:db/:testProd/:collection", config.uploadConfig);``
 

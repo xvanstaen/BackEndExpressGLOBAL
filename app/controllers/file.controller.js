@@ -192,7 +192,7 @@ const getFileContent = async (req, res) => {
         try{
           const theJson=JSON.parse(downloadFile)
           res.status(200).send(theJson);
-        }
+        } 
         catch(err){
           var myData={text:""};
           myData.text=downloadFile.toString();
@@ -200,8 +200,9 @@ const getFileContent = async (req, res) => {
         }
       }
       catch(err){
+          fillCacheConsole('Could not get the file '+ req.params.name );
           console.log("Could not get the file " +req.params.name + '  error==>' + err);
-          res.status(404).send( { message:"Could not get the file. ", error: err } );
+          res.status(504).send( { message:"Could not get the file. ", error: err } );
         }
     }
 
@@ -332,16 +333,16 @@ const upload =async (req, res) => {
 const getCacheConsole=async (req, res) => {
   if (cacheConsole.has(0)){
     const theTab=cacheConsole.get(0);
-    return res.send(theTab);
+    return res.send({msg:theTab,status:0});
   } else {
-    return res.send("nothing found in cacheConsole")
+    return res.send({msg:"nothing found in cacheConsole",status:0})
   }
 }
 
 const resetCacheConsole=async (req, res) => {
   var theTab=[];
   cacheConsole.set(0, theTab);
-  return res.send({msg:"nothing found in cacheConsole",status:0})
+  return res.send({msg:"cacheConsole is reset",status:0})
 }
 
 function fillCacheConsole(theMsg, content){
