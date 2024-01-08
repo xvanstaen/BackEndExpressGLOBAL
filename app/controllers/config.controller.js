@@ -88,10 +88,8 @@ module.exports.getFilesToCache = async function (testProd) {
         } else {
           filesToCache[i].bucket="";
           filesToCache[i].object=testConfig.filesToCache[i];
-        }
-        
+        }   
     }
-
     return ({status:200, tab:filesToCache});
   } else {
     return ({status:501,mesage:'configData cache does not exist; pb when server was initialised'})
