@@ -7,6 +7,7 @@ const fileSystem =  require("../controllers/fileSystem.controller.js");
 const authFn =  require("../controllers/authFn.js");
 const cryptoFn =  require("../controllers/cryptoFn.js");
 const config =  require("../controllers/config.controller.js");
+const cacheFn =  require("../controllers/cacheFunctions.js");
 
 let routes = (app) => {
   router.post("/upload/:projectId/:name/:testProd/:cacheControl/:contentType", fileCtrl.upload);
@@ -25,13 +26,13 @@ let routes = (app) => {
   router.get("/move/:projectId/:testProd/:DESTbucket/:SRCname/:DESTname", fileCtrl.moveObject);
   router.get("/copy/:projectId/:testProd/:DESTbucket/:SRCname/:DESTname", fileCtrl.copyObject);
 
-  router.get("/resetCacheFile/:projectId/:testProd/:fileName", fileCtrl.resetCacheFile);
-  router.get("/getCacheFile/:projectId/:testProd", fileCtrl.getCacheFile);
-  router.get("/reloadCacheFile/:projectId/:testProd", fileCtrl.reloadCacheFile);
-  router.get("/insertCacheFile/:projectId/:testProd/:name", fileCtrl.insertCacheFile);
+  router.get("/resetCacheFile/:projectId/:testProd/:fileName", cacheFn.resetCacheFile);
+  router.get("/getCacheFile/:projectId/:testProd", cacheFn.getCacheFile);
+  router.get("/reloadCacheFile/:projectId/:testProd", cacheFn.reloadCacheFile);
+  router.get("/insertCacheFile/:projectId/:testProd/:name", cacheFn.insertCacheFile);
 
-  router.get("/getCacheConsole/:projectId/:testProd", fileCtrl.getCacheConsole);
-  router.get("/resetCacheConsole/:projectId/:testProd", fileCtrl.resetCacheConsole);
+  router.get("/getCacheConsole/:projectId/:testProd", cacheFn.getCacheConsole);
+  router.get("/resetCacheConsole/:projectId/:testProd", cacheFn.resetCacheConsole);
 
   router.get("/checkLogin/:projectId/:testProd/:userId/:psw/", fileCtrl.checkLogin);
 

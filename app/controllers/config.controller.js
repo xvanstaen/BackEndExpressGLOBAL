@@ -17,6 +17,7 @@ const dbName='ConfigDB';
 /* ================ */
 
 const accessMongo = require("./accessMongo.js"); 
+const cacheFn = require("./cacheFunctions");
 
 /* ================ */
 
@@ -24,7 +25,6 @@ const nodecache = require('node-cache');
 var cache = new nodecache;
 
 
-const fileController = require("./file.controller");
 /* ================ */
 
 module.exports.getConfigServer = async function () {
@@ -97,9 +97,8 @@ module.exports.getFilesToCache = async function (testProd) {
 }
 
 retrieveConfigServer  = async function () {
-  db.config.collection.collectionName=req.params.collection;
-  db.config.collection.name=req.params.collection;
-  const mongoStatus = await accessMongo.accessMongo(CONFIG, req.params.db);
+
+  const mongoStatus = await accessMongo.accessMongo(CONFIG, dbName);
     try {
       return (mongoStatus)
     }
@@ -238,7 +237,7 @@ exports.uploadConfig = async (req, res) => {
 }
 
 module.exports.getAllConfig  =  async (req, res) => {
-  fileController.fillCacheConsole('in getAllConfig req.params.collection='+req.params.collection, " req.query.searchString=" + req.query.searchString);
+  cacheFn.fillCacheConsole('in getAllConfig req.params.collection='+req.params.collection, " req.query.searchString=" + req.query.searchString);
 
   db.config.collection.collectionName=req.params.collection;
   db.config.collection.name=req.params.collection;

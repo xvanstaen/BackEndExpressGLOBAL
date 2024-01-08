@@ -17,19 +17,15 @@ const url = require('url');
 
 const nodecache = require('node-cache');
 var cache = new nodecache; // used for the content of the file
-var tabFile = new nodecache;
-
-var cacheConsole= new nodecache;
 
 const authFn = require("./authFn");
 const stdFunctions = require("./stdFunctions");
 const cryptoFn = require("./cryptoFn");
 const configData = require("./tutorial.controller");
+const cacheFn = require("./cacheFunctions");
 
 // Instantiate a storage client with credentials
 // const storage = new Storage();
-
-
 
 async function  enableUniformBucketLevelAccess(bucketName, storage) {
   await storage.bucket(bucketName).setMetadata({
@@ -40,80 +36,8 @@ async function  enableUniformBucketLevelAccess(bucketName, storage) {
     }, 
   });
 }
-async function cacheFiles(testProd,fileName,bucketName){
-  var listFiles=[];
-  var i=0;
-  if (tabFile.has(0)){
-    listFiles = tabFile.get(0);
-  }
-  if (tabFile.has(0)===false || (tabFile.has(0) && listFiles.length===0) ){
-    const data = await configData.getFilesToCache(testProd);
-    if (data.status === 200){
-      for (var i=0; i<data.tab.length; i++){
-        const classFile= {file:'',bucket:'',updated:true};
-        listFiles.push(classFile);
-        listFiles[i].file=data.tab[i].object;
-        listFiles[i].bucket=data.tab[i].bucket;
-      }
-      tabFile.set(0, listFiles);
-    } else {
-      console.log('pb to retrieve filesToCache from configServer; cache listFiles remains empty; env=' + testProd + 
-      'data.status=' + data.status);
-    }
-  } else {
-    listFiles = tabFile.get(0);
-  }
-  for (i=0; i<listFiles.length && (fileName!==listFiles[i].file || bucketName!==listFiles[i].bucket);  i++){}
-  return({tab:listFiles,record:i});
-}
-
-const getCacheFile = async (req, res) => {
-  var myData=await cacheFiles(req.params.testProd,"");
-  return res.send({status:200,cacheFiles:myData.tab});
-}
-
-const insertCacheFile = async (req, res) => {
-  var myData=await cacheFiles(req.params.testProd,"");
-  for (var i=0; i<myData.tab.length && myData.tab[i].file!==req.params.name; i++){}
-  if (i===myData.tab.length){
-    const classFile={file:'',bucket:"",updated:true};
-    myData.tab.push(classFile);
-    myData.tab[myData.tab.length-1].file=req.params.name;
-    myData.tab[myData.tab.length-1].bucket=req.query.bucket;
-    tabFile.set(0, myData.tab);
-  }
-  return res.send({status:200,cacheFiles:myData.tab});
-}
 
 
-const reloadCacheFile = async (req, res) => { // reaccess mongo DB
-  if (tabFile.has(0)){
-    tabFile.set(0, []);
-  }
-  var myData=await cacheFiles(req.params.testProd,"");
-  return res.send({status:200,cacheFiles:myData.tab});
-}
-
-const resetCacheFile = async (req, res) => {
-  if (tabFile.has(0)){
-    var listFiles=[];
-    listFiles = tabFile.get(0);
-    if (req.params.fileName==="All"){
-      for (i=0; i<listFiles.length; i++){
-        listFiles[i].updated=true;
-        cache.set(i, []);
-        return res.status(200).send({status:200,msg:'cache for all files is reset'});
-      }
-    } else {
-      for (i=0; i<listFiles.length && req.params.fileName!==listFiles[i].file; i++){
-        listFiles[i].updated=true;
-        cache.set(i, []);
-      }
-      return res.status(200).send({status:200,msg:'cache for file ' + req.params.fileName + ' is reset'});
-    }
-  }
-  return res.status(201).send({status:201,msg:'cache for file is empty'});
-}
 
 const getMedialinkContent = async (req, res) => {
   const storage = await authFn.getClient(req.params.projectId);
@@ -159,56 +83,44 @@ const getTextFile= async (req, res) => {
 
 const getFileContent = async (req, res) => {
   try {
-    const theValue=await cacheFiles(req.params.testProd, req.params.name, req.query.bucket);
+    const theValue=await cacheFn.cacheFiles(req.params.testProd, req.params.name, req.query.bucket);
     var listFiles=theValue.tab;
     const i = theValue.record;
     if (i<listFiles.length  && (cache.get(i)) && listFiles[i].updated===false) {
         console.log('retrieve file  ' + req.params.name + ' from cache ' + i);
 
-        fillCacheConsole('retrieve file '+ req.params.name + ' from cache ' + i + " listFiles=","listFiles");
+        cacheFn.fillCacheConsole('retrieve file '+ req.params.name + ' from cache ' + i + " listFiles=","listFiles");
         
         res.status(200).send(cache.get(i));
-    } else {
-      const storage = await authFn.getClient(req.params.projectId);
-      var bucket = storage.bucket(req.query.bucket);
-      bucket.projectId=req.params.projectId;
+    } 
+    const storage = await authFn.getClient(req.params.projectId);
+    var bucket = storage.bucket(req.query.bucket);
+    bucket.projectId=req.params.projectId;
   
-      /**
-      const [metaData] = await bucket.file(req.params.name).getMetadata();
-      console.log("File found & link is " + metaData.mediaLink);
-      res.redirect(metaData.mediaLink);
-       */
-      console.log('retrieve file '+ req.params.name);
-      fillCacheConsole('retrieve file '+ req.params.name ,tabFile.get(0));
-      const [downloadFile] = await bucket.file(req.params.name).download();
-      try{
-        if (i<listFiles.length){
-          listFiles = tabFile.get(0); 
-          listFiles[i].updated=false; 
-          tabFile.set(0, listFiles);
-          cache.set(i,JSON.parse(downloadFile));
+    /**
+    const [metaData] = await bucket.file(req.params.name).getMetadata();
+    console.log("File found & link is " + metaData.mediaLink);
+    res.redirect(metaData.mediaLink);
+     */
+    console.log('retrieve file '+ req.params.name);
+    cacheFn.fillCacheConsole('retrieve file '+ req.params.name ,listFiles);
+    const [downloadFile] = await bucket.file(req.params.name).download();        
+    try{
+      const theJson=JSON.parse(downloadFile)
+      if (i<listFiles.length){
+          cacheFn.fillCacheFileUpdate(i,false);
+          cache.set(i,theJson);
           console.log('retrieved file  ' + req.params.name + ' & update of cache ' + i);
-        }
-        try{
-          const theJson=JSON.parse(downloadFile)
-          res.status(200).send(theJson);
-        } 
-        catch(err){
-          var myData={text:""};
-          myData.text=downloadFile.toString();
-          res.status(200).send(myData);
-        }
       }
-      catch(err){
-          fillCacheConsole('Could not get the file '+ req.params.name );
-          console.log("Could not get the file " +req.params.name + '  error==>' + err);
-          res.status(504).send( { message:"Could not get the file. ", error: err } );
-        }
+      res.status(200).send(theJson);
+    } 
+    catch(err){
+      var myData={text:""};
+      myData.text=downloadFile.toString();
+      res.status(200).send(myData);
     }
-
   }
   catch (err) {
-    
     console.log("Could not get the file " +req.params.name + '  error==>' + err);
     res.status(404).send( { message:"Could not get the file. ", error: err } );
   }
@@ -312,13 +224,14 @@ const upload =async (req, res) => {
          */
 
 
-        const theValue=await cacheFiles(req.params.testProd, req.params.name,req.query.bucket);
+        const theValue=await cacheFn.cacheFiles(req.params.testProd, req.params.name,req.query.bucket);
         var listFiles=theValue.tab;
         const i = theValue.record;
         if (i<listFiles.length  && listFiles[i].file === req.params.name && listFiles[i].bucket === req.query.bucket) {
             console.log('flag field updated to true for file ' + req.params.name + ' in cache nb' + i);
-            listFiles[i].updated=true;
-            tabFile.set(0, listFiles);
+            //listFiles[i].updated=true;
+            //tabFile.set(0, listFiles);
+            cacheFn.fillCacheFileUpdate(i,true);
         }
         res.status(200).send({
           message: "Uploaded the file successfully: " + req.file.originalname
@@ -330,45 +243,10 @@ const upload =async (req, res) => {
   }
 };
 
-const getCacheConsole=async (req, res) => {
-  if (cacheConsole.has(0)){
-    const theTab=cacheConsole.get(0);
-    return res.send({msg:theTab,status:0});
-  } else {
-    return res.send({msg:"nothing found in cacheConsole",status:0})
-  }
-}
-
-const resetCacheConsole=async (req, res) => {
-  var theTab=[];
-  cacheConsole.set(0, theTab);
-  return res.send({msg:"cacheConsole is reset",status:0})
-}
-
-function fillCacheConsole(theMsg, content){
- 
-  var theTab=[];
-  if (cacheConsole.has(0)){
-      const tabRecord={theDate:"", msg:"", content:""}
-      theTab = cacheConsole.get(0);
-      theTab.push(tabRecord);
-      theTab[theTab.length-1].theDate=stdFunctions.defineMyDate();
-      theTab[theTab.length-1].content=content;
-      theTab[theTab.length-1].msg=theMsg;
-  } else {
-      const tabRecord={theDate:"", msg:"", content:""}
-      theTab.push(tabRecord);
-      theTab[0].theDate=stdFunctions.defineMyDate();
-      theTab[0].msg=theMsg;
-      theTab[0].content=content;
-  }
-  cacheConsole.set(0, theTab);
-}
-
 const uploadMetaPerso =async (req, res) => {
   try {
 
-    fillCacheConsole('in uploadMetaPerso',"");
+    cacheFn.fillCacheConsole('in uploadMetaPerso',"");
 
     const storage = await authFn.getClient(req.params.projectId);
    
@@ -420,13 +298,14 @@ const uploadMetaPerso =async (req, res) => {
       res.status(505).send({ message: err.message });
     });
     blobStream.on("finish", async (data) => {
-    const theValue=await cacheFiles(req.params.testProd, req.params.name, req.query.bucket);
+    const theValue=await cacheFn.cacheFiles(req.params.testProd, req.params.name, req.query.bucket);
     var listFiles=theValue.tab;
     const i = theValue.record;
     if (i<listFiles.length  && listFiles[i].file === req.params.name && listFiles[i].bucket === req.query.bucket) {
         console.log('flag field updated to true for file ' + req.params.name + ' in cache nb' + i);
-        listFiles[i].updated=true;
-        tabFile.set(0, listFiles);
+        //listFiles[i].updated=true;
+        //tabFile.set(0, listFiles);
+        cacheFn.fillCacheFileUpdate(i,true);
     }
     res.status(200).send({
           message: "Uploaded the file successfully: " + req.file.originalname
@@ -657,15 +536,7 @@ module.exports = {
   copyObject,
   checkLogin,
   getUserPswRecord,
-  resetCacheFile,
-  getCacheFile,
-  reloadCacheFile,
   getMedialinkContent,
   getTextFile,
-  insertCacheFile,
-  getCacheConsole,
-  fillCacheConsole,
-  resetCacheConsole
 
-  
 };

@@ -19,7 +19,7 @@ const usrPSW = dbUsr.usrPSW;
 
 const accessMongo = require("./accessMongo.js"); 
 
-const fileController = require("./file.controller");
+const cacheFn = require("./cacheFunctions");
 
 /* ================ */
 
@@ -62,7 +62,7 @@ async function accessDB(dbName,collection,body){
 }
 
 // Create and Save a new record
-exports.save = async (req, res) => {
+const save = async (req, res) => {
   var record="";
   if (req.params.db!==''){
     current_dbName=req.params.db;
@@ -94,38 +94,9 @@ exports.save = async (req, res) => {
 
 };
 
-// Find a single record with an id
-exports.findById = async (req, res) => {
-    const theValue=  await accessDB(req.params.db,req.params.collection,"");
-    //accessMongo.accessMongo(Tutorial, req.query.db);
-    if (theValue.message!==undefined){
-      return  res.status(520).send({status:520, message:theValue.message});
-    }
-    if  (theValue.error!==0){
-      return res.status(540).send({status:540, message:'collection ' + req.params.collection + ' is invalid'});
-    }
-    const id = req.params.id;
 
-    try{
-      const resp = await theValue.col.findById(id)
-      try {
-        if (!resp) {
-          return  res.status(220).send({status:200, message:"Didn't find record with id " + req.params.id});
-        } else {
-          return res.send(resp);
-        }
-      }
-      catch(err) {
-            return res.status(510).send({status:510, message:err.message +  "  record with id=" + req.params.id });
-        };
-    }
-    catch(err) {
-        return res.status(521).send({status:521, message:"FAILURE " + err.message});
-    }; 
-       
-};
 // Update a record 
-exports.update = async (req, res) => {
+const update = async (req, res) => {
     //accessMongo.accessMongo(Tutorial, req.query.db);
     const theValue= await accessDB(req.params.db,req.params.collection,"");
     //accessMongo.accessMongo(Tutorial, req.query.db);
@@ -156,7 +127,7 @@ exports.update = async (req, res) => {
 };
 
 // Delete a record with the specified id in the request
-exports.deleteById = async (req, res) => {
+const deleteById = async (req, res) => {
   const theValue=await accessDB(req.params.db,req.params.collection,"");
   //accessMongo.accessMongo(Tutorial, req.query.db);
   if (theValue.message!==undefined){
@@ -187,7 +158,7 @@ exports.deleteById = async (req, res) => {
 };
 
 // Delete a record based on a condition
-exports.deleteByString = async (req, res) => {
+const deleteByString = async (req, res) => {
   const theValue=await accessDB(req.params.db,req.params.collection,"");
   //accessMongo.accessMongo(Tutorial, req.query.db);
   if (theValue.message!==undefined){
@@ -219,7 +190,7 @@ exports.deleteByString = async (req, res) => {
   };
 }; 
 // Delete all records in a given collection
-exports.deleteAll = async (req, res) => {
+const deleteAll = async (req, res) => {
   const theValue=await accessDB(req.params.db,req.params.collection,"");
   //accessMongo.accessMongo(Tutorial, req.query.db);
   if (theValue.message!==undefined){
@@ -242,10 +213,42 @@ exports.deleteAll = async (req, res) => {
   };
 };
 
+// Find a single record with an id
+const findById = async (req, res) => {
+  const theValue=  await accessDB(req.params.db,req.params.collection,"");
+  //accessMongo.accessMongo(Tutorial, req.query.db);
+  if (theValue.message!==undefined){
+    return  res.status(520).send({status:520, message:theValue.message});
+  }
+  if  (theValue.error!==0){
+    return res.status(540).send({status:540, message:'collection ' + req.params.collection + ' is invalid'});
+  }
+  const id = req.params.id;
+
+  try{
+    const resp = await theValue.col.findById(id)
+    try {
+      if (!resp) {
+        return  res.status(220).send({status:200, message:"Didn't find record with id " + req.params.id});
+      } else {
+        return res.send(resp);
+      }
+    }
+    catch(err) {
+          return res.status(510).send({status:510, message:err.message +  "  record with id=" + req.params.id });
+      };
+  }
+  catch(err) {
+      return res.status(521).send({status:521, message:"FAILURE " + err.message});
+  }; 
+     
+};
+
 // Find all records
-exports.findAll = async (req, res) => {
-  fileController.fillCacheConsole('in findAll req.params.collection=',req.params.collection);
-  const theValue=await accessDB(req.params.db,req.params.collection,"");
+const findAll = async (req, res) => {
+  const collection=req.params.collection;
+  cacheFn.fillCacheConsole('in findAll req.params.collection=',collection);
+  const theValue=await accessDB(req.params.db,collection,"");
   if (theValue.message!==undefined){
     return  res.status(520).send({status:520, message:theValue.message});
   }
@@ -263,14 +266,14 @@ exports.findAll = async (req, res) => {
         });
     }
   catch(err) {
-      fileController.fillCacheConsole('in findAll status=521', err.message);
+      cacheFn.fillCacheConsole('in findAll status=521', err.message);
       return res.status(521).send({status:521, message:"FAILURE " + err.message});
     };
   
 };
 
 // Retrieve all Tutorials from the database.
-exports.findByCriteria = async (req, res) => {
+const findByCriteria = async (req, res) => {
   const theValue=await accessDB(req.params.db,req.params.collection,"");
   if (theValue.message!==undefined){
     return  res.status(520).send({status:520, message:theValue.message});
@@ -297,5 +300,14 @@ exports.findByCriteria = async (req, res) => {
   };
 }
 
-
+module.exports = {
+  save,
+  update,
+  deleteById,
+  deleteByString,
+  deleteAll,
+  findById,
+  findByCriteria,
+  findAll,
+}
 
