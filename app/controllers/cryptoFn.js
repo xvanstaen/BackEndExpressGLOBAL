@@ -5,29 +5,40 @@ const fileController = require("./file.controller");
 const authFn = require("./authFn");
 const nodecache = require('node-cache');
 var cache = new nodecache;
-var cryptoBucket='xmv-cryptodata';
+var bucketCrypto='xmv-cryptodata';
+var bucketLogin='manage-login';
 
 const  encryptFn = async (req, res) => {
     try {
       const cryptAuth = JSON.parse(req.params.inAuth);
       if (cryptAuth.userId !== undefined && cryptAuth.psw !== undefined && cryptAuth.crypto !== undefined){
           if (cryptAuth.crypto === true){  
-            const myDecrypt = await fileController.getUserPswRecord(req.params.projectId,cryptAuth.userId, req.params.userId );
-              if (myDecrypt.data === "Key invalid" || myDecrypt.data !== cryptAuth.psw){
+            const encrypt = await getEncrypt(req.params.inData, req.params.inKey, req.params.inMethod, 0, req.params.projectId) ;
+            res.send({response:encrypt});
+            /*
+            const storage = await authFn.getClient(projectId);
+            var bucket = storage.bucket(bucketLogin);
+            bucket.projectId=projectId;
+          
+            const [downloadFile] = await bucket.file(userId+'PSW.json').download();
+            const decrypt = await getDecrypt(JSON.parse(downloadFile).psw , JSON.parse(downloadFile).key, JSON.parse(downloadFile).method ,0, projectId)
+           
+              if (decrypt === "Key invalid" || decrypt !== cryptAuth.psw){
                     res.status(701).send({error:"invalid request"});
               } else {
                 const encrypt = await getEncrypt(req.params.inData, req.params.inKey, req.params.inMethod, 0, req.params.projectId) ;
                 res.send({response:encrypt});
               } 
+              */
           } else {
-            res.status(702).send({error:"invalid request"});
+            res.status(702).send({error:"invalid encrypt request"});
           }
       } else {
-          res.status(702).send({error:"invalid request"});
+          res.status(702).send({error:"invalid encrypt request"});
         }
     }
     catch (err){
-      res.status(700).send('pb with encryptFn');
+      res.status(700).send({msg:'pb with  coding of encryptFn', error:err});
     }
   }
   
@@ -36,22 +47,28 @@ const  encryptFn = async (req, res) => {
       const cryptAuth = JSON.parse(req.params.inAuth);
       if (cryptAuth.userId !== undefined && cryptAuth.psw !== undefined && cryptAuth.crypto !== undefined){
         if (cryptAuth.crypto === true){  
-            const myEncrypt = await fileController.getUserPswRecord(req.params.projectId,cryptAuth.userId, req.params.userId );
-            if (myEncrypt.data === "Key invalid" || myEncrypt.data !== cryptAuth.psw){
+            const decrypt = await getDecrypt(req.params.inData, req.params.inKey, req.params.inMethod, 0, req.params.projectId);
+            res.send({response:decrypt});
+            /*
+            //const [downloadFile] = await bucket.file(cryptAuth.userId+'PSW.json').download();
+            //const myEncrypt = await getDecrypt(JSON.parse(downloadFile).psw , JSON.parse(downloadFile).key, JSON.parse(downloadFile).method ,0, projectId)
+            const myEncrypt = await getDecrypt(cryptAuth.psw  , cryptAuth.key , JSON.parse(downloadFile).method ,0, projectId)
+            if (myEncrypt === "Key invalid" || myEncrypt !== cryptAuth.psw){
                   res.status(701).send({error:"invalid request"});
             } else {
               const decrypt = await getDecrypt(req.params.inData, req.params.inKey, req.params.inMethod, 0, req.params.projectId);
               res.send({response:decrypt});
             }
+            */
         } else {
-            res.status(702).send({error:"invalid request"});
+            res.status(702).send({error:"invalid decrypt request"});
         }
       } else {
-          res.status(702).send({error:"invalid request"});
+          res.status(702).send({error:"invalid decrypt request"});
       }
       }
       catch (err){
-        res.status(700).send('pb with decryptFn');
+        res.status(700).send({msg:'pb with coding of decryptFn', error:err});
       }
   }
   
@@ -60,7 +77,7 @@ const  encryptFn = async (req, res) => {
         var myCrypto=cache.get(0);
       } else {
             const storage = await authFn.getClient(projectId);
-            const bucket = storage.bucket(cryptoBucket);
+            const bucket = storage.bucket(bucketCrypto);
             const [downloadFile] = await bucket.file('cryptoKey').download();
             cache.set(0,JSON.parse(downloadFile))
             myCrypto=JSON.parse(downloadFile);
@@ -94,7 +111,7 @@ const  encryptFn = async (req, res) => {
         var myCrypto=cache.get(0);
       } else {
             const storage = await authFn.getClient(projectId);
-            const bucket = storage.bucket(cryptoBucket);
+            const bucket = storage.bucket(bucketCrypto);
             const [downloadFile] = await bucket.file('cryptoKey').download();
             cache.set(0,JSON.parse(downloadFile))
             myCrypto=JSON.parse(downloadFile);

@@ -18,8 +18,9 @@ dbUsr.usrPSW.collection.name='usrpsws';
 const usrPSW = dbUsr.usrPSW;
 
 const accessMongo = require("./accessMongo.js"); 
+const cacheFn = require("./cacheFunctions.js");
+const configFn = require("./config.controller.js");
 
-const cacheFn = require("./cacheFunctions");
 
 /* ================ */
 
@@ -47,17 +48,23 @@ async function accessDB(dbName,collection,body){
     }
     
   } else if (collection === usrPSW.collection.name){
-
-    
     await accessMongo.accessMongo(usrPSW, current_dbName);
     theCollection=usrPSW;
     if (body!==""){
       record=new usrPSW(body);
     }
   } else {
-    error = 404;
+    const theConfig=configFn.getConfigDB();
+    if (collection === theConfig.theDB.collection.name){
+      await accessMongo.accessMongo(theConfig.theDB, theConfig.dbName);
+      theCollection=theConfig.theDB;
+      if (body!==""){
+        record=new theConfig.theDB(body);
+      }
+    }else {
+      error = 404;
+    }
   }
-  
   return ({col:theCollection,rec:record, error:error})
 }
 
@@ -78,7 +85,15 @@ const save = async (req, res) => {
   } else if (req.params.collection === usrPSW.collection.name){
     record=new usrPSW(req.body);
     await accessMongo.accessMongo(usrPSW, current_dbName);
-  } else { return res.send({msg:'collection ' + req.params.collection + ' is invalid', status:404});}
+  } else {
+    const theConfig=configFn.getConfigDB();
+    if (req.params.collection === theConfig.theDB.collection.name){
+      await accessMongo.accessMongo(theConfig.theDB, theConfig.dbName);
+      record=new theConfig.theDB(req.body);
+    } else {
+      return res.send({msg:'collection ' + req.params.collection + ' is invalid', status:404});
+    }
+  }
   
   try{
     const resp = await record.save()
@@ -178,7 +193,7 @@ const deleteByString = async (req, res) => {
         if (resp.deletedCount===0) {
           return res.status(220).send({status:220, message:'no record matches the search criteria'});
         } else {
-          return res.send(resp);// works when EXACT MATCHh
+          return res.send(resp);// works when EXACT MATCH
         }
       }
     catch(err) {
@@ -296,7 +311,7 @@ const findByCriteria = async (req, res) => {
     };
   }
   catch(err) {
-      return res.status(521).send({status:520, message:"FAILURE " + err.message});
+      return res.status(521).send({status:521, message:"FAILURE " + err.message});
   };
 }
 

@@ -22,7 +22,10 @@ const authFn = require("./authFn");
 const stdFunctions = require("./stdFunctions");
 const cryptoFn = require("./cryptoFn");
 const configData = require("./tutorial.controller");
-const cacheFn = require("./cacheFunctions");
+const cacheFn = require("./cacheFunctions.js");
+
+var bucketCrypto='xmv-cryptodata';
+var bucketLogin='manage-login';
 
 // Instantiate a storage client with credentials
 // const storage = new Storage();
@@ -126,8 +129,6 @@ const getFileContent = async (req, res) => {
   }
 };
 
-var bucketLogin='manage-login';
-
 async function getUserPswRecord(projectId, userId){
   const storage = await authFn.getClient(projectId);
   var bucket = storage.bucket(bucketLogin);
@@ -145,7 +146,7 @@ const  checkLogin = async (req, res) => {
     const myDecrypt = await getUserPswRecord(req.params.projectId,req.params.userId );
     
     if (myDecrypt.data === "Key invalid" || myDecrypt.data !== req.params.psw){
-      res.status(700).send({error:"invalid request"});
+      res.status(700).send({error:"invalid id/psw"});
     } else {
       const storage = await authFn.getClient(req.params.projectId);
       var bucket = storage.bucket(myDecrypt.bucketUserInfo);
@@ -177,18 +178,21 @@ const upload =async (req, res) => {
 
     // Create a new blob in the bucket and upload the file data. req.params.name
     const blob = bucket.file(req.file.originalname);
-
+    /*
     if (req.params.contentType==='json') {
       var theType='application/json';
     } else if (req.params.contentType==='text') {
       var theType='text/plain';
+    } else {
+      theType = req.params.contentType;
     }
+    */
     const blobStream = blob.createWriteStream({
       metadata: {
         //cacheControl: 'public,max-age=0,no-cache,no-store',
         //contentType: 'application/json'
         cacheControl: req.params.cacheControl,
-        contentType: theType
+        contentType: req.params.contentType
       },
       resumable: false,
     });
@@ -261,13 +265,16 @@ const uploadMetaPerso =async (req, res) => {
 
     // Create a new blob in the bucket and upload the file data. req.params.name
     const blob = bucket.file(req.file.originalname);
+    /*
     var theContentType="";
     if (req.params.contentType==='json' || req.params.contentType==='application') {
       theContentType='application/json';
     } else if (req.params.contentType==='text' || req.params.contentType==='plain') {
       theContentType='text/plain';
+    } else {
+      theContentType = req.params.contentType;
     }
-
+    */
     var tabMeta=JSON.parse(req.params.metaPerso);
  
     if (Array.isArray(tabMeta) === false) {
@@ -287,9 +294,9 @@ const uploadMetaPerso =async (req, res) => {
     myMetaStr=myMetaStr+'}';
     var persoMeta="";
     if (tabMeta.length>0){
-        persoMeta='{"metadata":'+'{'+cacheCtrl+req.params.cacheControl+'",'+theType+theContentType+'",'+myMetaStr+'}' +',"resumable": "false"}';
+        persoMeta='{"metadata":'+'{'+cacheCtrl+req.params.cacheControl+'",'+theType+req.params.contentType+'",'+myMetaStr+'}' +',"resumable": "false"}';
     } else {
-       persoMeta='{"metadata":'+'{'+cacheCtrl+req.params.cacheControl+'",'+theType+theContentType+'"}'+',"resumable": "false"}';
+       persoMeta='{"metadata":'+'{'+cacheCtrl+req.params.cacheControl+'",'+theType+req.params.contentType+'"}'+',"resumable": "false"}';
     }
     console.log(JSON.parse(persoMeta))
     const blobStream = blob.createWriteStream(JSON.parse(persoMeta)); 
@@ -319,59 +326,50 @@ const uploadMetaPerso =async (req, res) => {
 
 
 const updateMeta = async (req, res) => {
-  const storage = await authFn.getClient(req.params.projectId);
-  var bucket = storage.bucket(req.query.bucket);
-  bucket.projectId=req.params.projectId;
- /**
-  const persoMetadata = {
-    cacheControl: 'public,max-age=0,no-cache,no-store',
-    contentType: 'application/json',
-    metadata:{
-      keyOne:'valueOne',
-      keyTwo:'valueTwo',
-    }
-  };
-  */
-  
-  var tabMeta=JSON.parse(req.params.metaPerso);
- 
-  if (Array.isArray(tabMeta) === false) {
-    tabMeta=[];
-  }
-  
-  var i = req.params.metaType.indexOf('-');
-  const theContentType=req.params.metaType.substring(0,i)+'/'+req.params.metaType.substring(i+1);
-  var testData=req.params.metaType;
-  testData.replace('-', '/');
-
   const cacheCtrl='"cacheControl":"';
   const theType='"contentType":"';
   const theMeta='"metadata":{';
-  var myMetaStr=theMeta;
-  for (i=0; i<tabMeta.length; i++){
-    if (i>0){
-      myMetaStr=myMetaStr+',';
-    }
-    myMetaStr=myMetaStr+ '"'+tabMeta[i].key+'":"'+tabMeta[i].value+'"';
-  }
-  myMetaStr=myMetaStr+'}';
-  var persoMeta="";
-  if (tabMeta.length>0){
-      persoMeta='{'+cacheCtrl+req.params.metaCache+'",'+theType+theContentType+'",'+myMetaStr+'}';
-  } else {
-     persoMeta='{'+cacheCtrl+req.params.metaCache+'",'+theType+theContentType+'"}';
-  }
- 
-  console.log(persoMeta );
-  
-  // {"cacheControl":"public,max-age=0,no-cache,no-store","contentType":"application/json","metadata":{"myOwnKwy":"myPerformance"}}
+  const storage = await authFn.getClient(req.params.projectId);
+
   try {
-        const [metaDataPerso] = await bucket.file(req.params.name).setMetadata(JSON.parse(persoMeta));
-        console.log('metadata='+metaDataPerso);
+      var bucket = storage.bucket(req.query.bucket);
+      bucket.projectId=req.params.projectId;  
+      var tabMeta=JSON.parse(req.params.metaPerso);
     
-        res.status(200).send({message: "MetaData successfully updated ",metaData:metaDataPerso});
+      if (Array.isArray(tabMeta) === false) {
+        tabMeta=[];
+      }
+      /*
+      var i = req.params.metaType.indexOf('-');
+      const theContentType=req.params.metaType.substring(0,i)+'/'+req.params.metaType.substring(i+1);
+      var testData=req.params.metaType;
+      testData.replace('-', '/');
+      */
+      var myMetaStr=theMeta;
+      for (i=0; i<tabMeta.length; i++){
+        if (i>0){
+          myMetaStr=myMetaStr+',';
+        }
+        myMetaStr=myMetaStr+ '"'+tabMeta[i].key+'":"'+tabMeta[i].value+'"';
+      }
+      myMetaStr=myMetaStr+'}';
+      var persoMeta="";
+      if (tabMeta.length>0){
+          persoMeta='{'+cacheCtrl+req.params.metaCache+'",'+theType+req.params.metaType+'",'+myMetaStr+'}';
+      } else {
+        persoMeta='{'+cacheCtrl+req.params.metaCache+'",'+theType+req.params.metaType+'"}';
+      }
+    
+      console.log(persoMeta );
+      
+      // {"cacheControl":"public,max-age=0,no-cache,no-store","contentType":"application/json","metadata":{"myOwnKwy":"myPerformance"}}
+ 
+      const [metaDataPerso] = await bucket.file(req.params.name).setMetadata(JSON.parse(persoMeta));
+      console.log('metadata='+metaDataPerso);
+    
+      res.status(200).send({message: "MetaData successfully updated ",metaData:metaDataPerso});
   } catch (err) {
-    res.status(500).send({ message: "MetaData not updated - returned error is " + err });
+      res.status(500).send({ message: "MetaData not updated - returned error is " + err });
   }
 }
 
@@ -440,9 +438,8 @@ const listBuckets = async (req, res) => {
     const [buckets] = await storage.getBuckets();
     let BuckInfos = [];
     buckets.forEach(bucket => {
-      BuckInfos.push({
-        name: bucket.name
-      });
+      if (bucket.name !== bucketCrypto & bucket.name !== bucketLogin)
+        BuckInfos.push({name: bucket.name});
     });
     res.status(200).send(BuckInfos);
   } catch (err) {
@@ -505,7 +502,6 @@ const renameObject = async (req, res) => {
 };
 
 
-
 const deleteObject = async (req, res) => {
   try {
     const storage = await authFn.getClient(req.params.projectId);
@@ -517,8 +513,6 @@ const deleteObject = async (req, res) => {
     res.status(500).send({message: "Could not delete the object " + err});
   }
 };
-
-
 
 
 module.exports = {

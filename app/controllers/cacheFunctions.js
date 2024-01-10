@@ -2,7 +2,6 @@ const nodecache = require('node-cache');
 var tabFile = new nodecache;
 var cacheConsole= new nodecache;
 
-const configData = require("./config.controller");
 const stdFunctions = require("./stdFunctions");
 
 async function cacheFiles(testProd,fileName,bucketName){
@@ -12,7 +11,7 @@ async function cacheFiles(testProd,fileName,bucketName){
       listFiles = tabFile.get(0);
     }
     if (tabFile.has(0)===false || (tabFile.has(0) && listFiles.length===0) ){
-      const data = await configData.getFilesToCache(testProd);
+      const data = await getFilesToCache(testProd);
       if (data.status === 200){``
         for (var i=0; i<data.tab.length; i++){
           const classFile= {file:'',bucket:'',updated:true};
@@ -31,6 +30,38 @@ async function cacheFiles(testProd,fileName,bucketName){
     for (i=0; i<listFiles.length && (fileName!==listFiles[i].file || bucketName!==listFiles[i].bucket);  i++){}
     return({tab:listFiles,record:i});
   }
+
+
+const getFilesToCache = async function (testProd) {
+  try{
+    var filesToCache=[];
+    var testConfig="";
+    if ( cache.has(0)){ // should always be true
+      if (testProd.toLowerCase()==='prod'){
+        testConfig=cache.get(0);
+      } else {
+        testConfig=cache.get(1);
+      }
+      for (var i=0; i<testConfig.filesToCache.length; i++){
+          const theClass= {bucket:"",object:""};
+          filesToCache.push(theClass);
+          if (testConfig.filesToCache[i].bucket!==undefined){
+            filesToCache[i].bucket=testConfig.filesToCache[i].bucket;
+            filesToCache[i].object=testConfig.filesToCache[i].object;
+          } else {
+            filesToCache[i].bucket="";
+            filesToCache[i].object=testConfig.filesToCache[i];
+          }   
+      }
+      return ({status:200, tab:filesToCache});
+    } else {
+      return ({status:501,mesage:'configData cache does not exist; pb when server was initialised'})
+    }  
+  }
+  catch(err) {
+    return res.status(521).send({status:521, message:"FAILURE " + err.message});
+  }; 
+}
 
 
   function fillCacheConsole(theMsg, content){
@@ -122,10 +153,12 @@ async function cacheFiles(testProd,fileName,bucketName){
     cacheConsole.set(0, theTab);
     return res.send({msg:"cacheConsole is reset",status:0})
   }
+  
   module.exports={
     cacheFiles,
     insertCacheFile,
     getCacheFile,
+    getFilesToCache,
     reloadCacheFile,
     resetCacheFile,
     fillCacheFileUpdate,
