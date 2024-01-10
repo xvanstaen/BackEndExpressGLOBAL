@@ -8,6 +8,7 @@
         SourceJson_Google_Mongo:String,
         test_prod:String,
         GoogleProjectId:String,
+        consoleBucket:String,
         Mongo_Google:String,
         baseUrl:String,
         IpAddress:String,

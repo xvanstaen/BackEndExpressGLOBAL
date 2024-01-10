@@ -4,6 +4,16 @@ var cacheConsole= new nodecache;
 
 const stdFunctions = require("./stdFunctions");
 
+function serverVersion(){
+  const myVersion="Version 10Jan2024 V0-1";
+  return(myVersion)
+}
+
+const getServerVersion = async (req, res) => { 
+  const myVersion=serverVersion();
+  return res.send({status:200,version:myVersion});
+}
+
 async function cacheFiles(testProd,fileName,bucketName){
     var listFiles=[];
     var i=0;
@@ -155,6 +165,8 @@ const getFilesToCache = async function (testProd) {
   }
   
   module.exports={
+    getServerVersion,
+    serverVersion,
     cacheFiles,
     insertCacheFile,
     getCacheFile,

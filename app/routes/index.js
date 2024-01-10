@@ -34,6 +34,8 @@ let routes = (app) => {
   router.get("/getCacheConsole/:projectId/:testProd", cacheFn.getCacheConsole);
   router.get("/resetCacheConsole/:projectId/:testProd", cacheFn.resetCacheConsole);
 
+  router.get("/serverVersion/:projectId/:testProd", cacheFn.getServerVersion);
+
   router.get("/checkLogin/:projectId/:testProd/:userId/:psw/", fileCtrl.checkLogin);
 
   router.get("/encryptFn/:projectId/:testProd/:inData/:inKey/:inMethod/:inAuth", cryptoFn.encryptFn);
