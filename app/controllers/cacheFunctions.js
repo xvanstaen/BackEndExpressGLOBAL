@@ -1,6 +1,7 @@
 const nodecache = require('node-cache');
 var tabFile = new nodecache;
 var cacheConsole= new nodecache;
+var cache= new nodecache;
 
 const stdFunctions = require("./stdFunctions");
 
