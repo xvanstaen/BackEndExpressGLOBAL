@@ -35,7 +35,7 @@ function getConfigDB() {
 
 const getConfigServer = async function () {
   try{
-      const myValue = await retrieveConfigServer();
+      const myValue =await retrieveConfigServer();
     
       console.log('ConfigServer = ' + JSON.stringify(myValue));
       return (myValue)
@@ -116,7 +116,7 @@ const getFilesToCache = async function (testProd) {
   }; 
 }
 
-const resetConfig = (req, res) => {
+const resetCacheConfig = (req, res) => {
   try{
     var i=0;
     for (i=0; cacheConfig.has(i); i++){
@@ -314,7 +314,7 @@ module.exports = {
   getFilesToCache,
   findConfigBytring,
   findConfig,
-  resetConfig,
+  resetCacheConfig,
   getConfigServer,
   getConfigData,
   retrieveConfigServer,

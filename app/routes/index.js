@@ -57,10 +57,10 @@ let routes = (app) => {
 /*============ CONFIG  =============*/
   // Retrieve configServer file
 
-  router.get("/config/:db/:testProd/:collection", config.findConfig);
-  router.get("/configByString/:db/:testProd/:collection/:searchField", config.findConfig); // contains the searchString query
-  router.get("/resetConfig/:db/:testProd/:collection", config.resetConfig);
-  router.get("/allConfig/:db/:testProd/:collection", config.getAllConfig);
+  router.get("/findConfig/:db/:testProd/:collection", config.findConfig);
+  router.get("/findConfigByString/:db/:testProd/:collection/:searchField", config.findConfig); // contains the searchString query
+  router.get("/resetConfig/:db/:testProd/:collection", config.resetCacheConfig);
+  router.get("/findAllConfig/:db/:testProd/:collection", config.getAllConfig);
   router.put("/updateConfig/:db/:testProd/:collection/:id", config.updateConfig);
   router.put("/uploadConfig/:db/:testProd/:collection", config.uploadConfig);
   router.get("/delConfigById/:db/:testProd/:collection/:id", config.delConfigById);
