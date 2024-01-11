@@ -4,17 +4,17 @@ const mongoose = require("mongoose");
 mongoose.set('strictQuery', false);
 mongoose.Promise = global.Promise;
 const dbConfig = require("../config/db.config.js"); // contains the mongodb url
-const dbName='ConfigDB';
+
 
 var dbConf = {};
-dbConf.url = dbConfig.url;
-dbConf.mongoose = mongoose;
+//dbConf.url = dbConfig.url;
+//dbConf.mongoose = mongoose;
 dbConf.config = require("../models/config.model")(mongoose);
 dbConf.config.collection.name='configServer';
-//db.config.collection.collectionName='configServer';
+dbConf.config.collection.collectionName='configServer';
 
 const CONFIG = dbConf.config;
-
+const dbName='ConfigDB';
 
 /* ================ */
 
@@ -71,6 +71,7 @@ const getConfigData = async function (testProd, searchString) {
     return err
   }
 }
+
 
 const retrieveConfigServer  = async function () {
 
@@ -260,25 +261,30 @@ try{
 const getAllConfig  =  async (req, res) => {
   try{
 
-    cacheConsole.fillCacheConsole('in getAllConfig req.params.collection=',req.params.collection);
-
-    //db.config.collection.collectionName=req.params.collection;
-    //db.config.collection.name=req.params.collection;
+    // cacheConsole.fillCacheConsole('in getAllConfig req.params.collection=',req.params.collection);
     
-    await  accessMongo.accessMongo(CONFIG, req.params.db).then
-    (result => {
-      CONFIG.find()
-            .then(data => {
-              testData=JSON.stringify(data);
-              const record = JSON.parse(testData);
-
-              return res.send(record);
-            })
-            .catch(err => {
-                  return res.status(500).send({ message:err.message || "Some error occurred while retrieving config"});
-            });
-      });
-  }
+    await  accessMongo.accessMongo(CONFIG, dbName)
+    //var searchString = undefined;
+    //var condition = searchString ? { "test_prod": { $regex: new RegExp(searchString), $options: "i" } } : {};
+    //const myData = await getConfigAllData('test',"");
+    CONFIG.find() 
+      .then(data => {
+          return res.send(data);
+        })
+      .catch(err => {
+          return res.status(510).send({status:510, message:err.message + "  error occurred while retrieving all records"});
+        });
+    /*
+    try{
+        testData=JSON.stringify(data);
+        const record = JSON.parse(testData);
+        return res.send(record);
+    }
+    catch (err) {
+        return res.status(500).send({ message:err.message || "Some error occurred while retrieving config"});
+            };
+    */
+    }
   catch(err) {
     return res.status(521).send({status:521, message:"FAILURE " + err.message});
   };
