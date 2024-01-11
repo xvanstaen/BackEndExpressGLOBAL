@@ -1,12 +1,13 @@
 const nodecache = require('node-cache');
 var tabFile = new nodecache;
-var cacheConsole= new nodecache;
+
 var cache= new nodecache;
 
 const stdFunctions = require("./stdFunctions");
+const config = require("./config.controller");
 
 function serverVersion(){
-  const myVersion="Version 10Jan2024 V0-1";
+  const myVersion="Version 11Jan2024 V0-1";
   return(myVersion)
 }
 
@@ -22,8 +23,8 @@ async function cacheFiles(testProd,fileName,bucketName){
       listFiles = tabFile.get(0);
     }
     if (tabFile.has(0)===false || (tabFile.has(0) && listFiles.length===0) ){
-      const data = await getFilesToCache(testProd);
-      if (data.status === 200){``
+      const data = await config.getFilesToCache(testProd);
+      if (data.status === 200){
         for (var i=0; i<data.tab.length; i++){
           const classFile= {file:'',bucket:'',updated:true};
           listFiles.push(classFile);
@@ -32,7 +33,7 @@ async function cacheFiles(testProd,fileName,bucketName){
         }
         tabFile.set(0, listFiles);
       } else {
-        console.log('pb to retrieve filesToCache from configServer; cache listFiles remains empty; env=' + testProd + 
+        console.log('pb to retrieve filesToCache ; cache listFiles remains empty; env=' + testProd + 
         'data.status=' + data.status);
       }
     } else {
@@ -42,59 +43,6 @@ async function cacheFiles(testProd,fileName,bucketName){
     return({tab:listFiles,record:i});
   }
 
-
-const getFilesToCache = async function (testProd) {
-  try{
-    var filesToCache=[];
-    var testConfig="";
-    if ( cache.has(0)){ // should always be true
-      if (testProd.toLowerCase()==='prod'){
-        testConfig=cache.get(0);
-      } else {
-        testConfig=cache.get(1);
-      }
-      for (var i=0; i<testConfig.filesToCache.length; i++){
-          const theClass= {bucket:"",object:""};
-          filesToCache.push(theClass);
-          if (testConfig.filesToCache[i].bucket!==undefined){
-            filesToCache[i].bucket=testConfig.filesToCache[i].bucket;
-            filesToCache[i].object=testConfig.filesToCache[i].object;
-          } else {
-            filesToCache[i].bucket="";
-            filesToCache[i].object=testConfig.filesToCache[i];
-          }   
-      }
-      return ({status:200, tab:filesToCache});
-    } else {
-      return ({status:501,mesage:'configData cache does not exist; pb when server was initialised'})
-    }  
-  }
-  catch(err) {
-    return res.status(521).send({status:521, message:"FAILURE " + err.message});
-  }; 
-}
-
-
-  function fillCacheConsole(theMsg, content){
-   
-    var theTab=[];
-    if (cacheConsole.has(0)){
-        const tabRecord={theDate:"", msg:"", content:""}
-        theTab = cacheConsole.get(0);
-        theTab.push(tabRecord);
-        theTab[theTab.length-1].theDate=stdFunctions.defineMyDate();
-        theTab[theTab.length-1].content=content;
-        theTab[theTab.length-1].msg=theMsg;
-    } else {
-        const tabRecord={theDate:"", msg:"", content:""}
-        theTab.push(tabRecord);
-        theTab[0].theDate=stdFunctions.defineMyDate();
-        theTab[0].msg=theMsg;
-        theTab[0].content=content;
-    }
-    cacheConsole.set(0, theTab);
-  }
-  
   function fillCacheFileUpdate(record,updated){
     var listFiles=[];
     listFiles = tabFile.get(0); 
@@ -150,20 +98,7 @@ const getFilesToCache = async function (testProd) {
     return res.status(201).send({status:201,msg:'cache for file is empty'});
   }
   
-  const getCacheConsole=async (req, res) => {
-    if (cacheConsole.has(0)){
-      const theTab=cacheConsole.get(0);
-      return res.send({msg:theTab,status:0});
-    } else {
-      return res.send({msg:"nothing found in cacheConsole",status:0})
-    }
-  }
-  
-  const resetCacheConsole=async (req, res) => {
-    var theTab=[];
-    cacheConsole.set(0, theTab);
-    return res.send({msg:"cacheConsole is reset",status:0})
-  }
+
   
   module.exports={
     getServerVersion,
@@ -171,12 +106,8 @@ const getFilesToCache = async function (testProd) {
     cacheFiles,
     insertCacheFile,
     getCacheFile,
-    getFilesToCache,
     reloadCacheFile,
     resetCacheFile,
     fillCacheFileUpdate,
-    getCacheConsole,
-    fillCacheConsole,
-    resetCacheConsole,
-    
+
   }

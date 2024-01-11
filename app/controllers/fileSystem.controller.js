@@ -6,6 +6,7 @@ const { Storage } = require("@google-cloud/storage");
 const fileController = require("./file.controller");
 const stdFunctions = require("./stdFunctions");
 const authFn = require("./authFn");
+const cacheConsole = require("./cacheConsole");
 
 const { stringify } = require("querystring");
 const {google} = require('googleapis');
@@ -50,12 +51,12 @@ const onFileSystem = async (req, res) => {
             if (Number(currentTime) <= Number(timeOutValue)){
               const theMsg='File System: server was reset and file is locked by another user';
               console.log(theMsg);
-              fileController.fillCacheConsole(theMsg,{status:956})
+              cacheConsole.fillCacheConsole(theMsg,{status:956})
               return res.send({msg: theMsg, status:956});   
             }
               const theMsg='File System: server was reset, file was locked by another user but timeout occured;';
               console.log(theMsg);
-              const theCode=fileController.fillCacheConsole(theMsg,{updatedAt:myFileSystem[i].updatedAt,timeOut:timeOutValue,currentTime:currentTime});
+              const theCode=cacheConsole.fillCacheConsole(theMsg,{updatedAt:myFileSystem[i].updatedAt,timeOut:timeOutValue,currentTime:currentTime});
           } 
       }
       /*
@@ -77,7 +78,7 @@ const onFileSystem = async (req, res) => {
         } else {
             const theMsg='File System: server was reset and same user re-accesses the file which indeed is empty';
         }
-        fileController.fillCacheConsole(theMsg,myFileSystem);
+        cacheConsole.fillCacheConsole(theMsg,myFileSystem);
         console.log(theMsg);
       /** } */ 
 
@@ -212,7 +213,7 @@ const onFileSystem = async (req, res) => {
               record=tabFS.length-1;
               fileSystemCache.set(0,tabFS);
               console.log('File System: memory record is created for ' + tabLock[req.params.iWait].objectName);
-              fileController.fillCacheConsole('File System: memory record is created for ' + tabLock[req.params.iWait].objectName,myFileSystem);
+              cacheConsole.fillCacheConsole('File System: memory record is created for ' + tabLock[req.params.iWait].objectName,myFileSystem);
             }
           // const [fileData] = await bucketFileSystem.file(tabLock[req.params.iWait].objectName).download();
           // const myFileSystem = await getFileSystem(req.query.bucket, req.params.projectId, tabLock[req.params.iWait].objectName)

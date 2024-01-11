@@ -19,12 +19,12 @@ const CONFIG = dbConf.config;
 /* ================ */
 
 const accessMongo = require("./accessMongo.js"); 
-const cacheFn = require("./cacheFunctions.js");
+const cacheConsole = require("./cacheConsole.js");
 
 /* ================ */
 
 const nodecache = require('node-cache');
-var cache = new nodecache;
+var cacheConfig = new nodecache;
 
 
 /* ================ */
@@ -57,12 +57,8 @@ const getConfigData = async function (testProd, searchString) {
       testData=JSON.stringify(theValue);
       const record = JSON.parse(testData);
       for (i=0; i<record.length; i++){
-        cache.set(i, record[i]);
+        cacheConfig.set(i, record[i]);
       }
-      //cache.set(0, record[0]);
-      //cache.set(1, record[1]);
-
-      //return ({status:200,config:data});
       console.log('cache of config data is set up; status=200');
       return ({status:200,configProd:record[0],configTest:record[1], nbRecords:i});
     } else {
@@ -88,18 +84,45 @@ const retrieveConfigServer  = async function () {
     }
   }
 
+
+const getFilesToCache = async function (testProd) {
+  try{
+    var filesToCache=[];
+    var testConfig="";
+    if ( cacheConfig.has(0)){ // should always be true
+      if (testProd.toLowerCase()==='prod'){
+        testConfig=cacheConfig.get(0);
+      } else {
+        testConfig=cacheConfig.get(1);
+      }
+      for (var i=0; i<testConfig.filesToCache.length; i++){
+          const theClass= {bucket:"",object:""};
+          filesToCache.push(theClass);
+          if (testConfig.filesToCache[i].bucket!==undefined){
+            filesToCache[i].bucket=testConfig.filesToCache[i].bucket;
+            filesToCache[i].object=testConfig.filesToCache[i].object;
+          } else {
+            filesToCache[i].bucket="";
+            filesToCache[i].object=testConfig.filesToCache[i];
+          }   
+      }
+      return ({status:200, tab:filesToCache});
+    } else {
+      return ({status:501,mesage:'configData cache does not exist; pb when server was initialised'})
+    }  
+  }
+  catch(err) {
+    return res.status(521).send({status:521, message:"FAILURE " + err.message});
+  }; 
+}
+
 const resetConfig = (req, res) => {
   try{
     var i=0;
-    for (i=0; cache.has(i); i++){
-      cache.set(i, "");
+    for (i=0; cacheConfig.has(i); i++){
+      cacheConfig.set(i, "");
     }
-    /*
-    if ( cache.has(0)){
-      cache.set(0, "");
-      cache.set(1, "");
-    }
-    */
+
     return res.status(200).send({message:"cache for configuration (' + i ' records) is reset"});
   }
   catch(err) {
@@ -112,11 +135,11 @@ const resetConfig = (req, res) => {
 const findConfig = async  (req, res) => {
   try{
   //console.log('findCollection/configServer');
-    if ( cache.has(0) && cache.get(0)!==""){
+    if ( cacheConfig.has(0) && cacheConfig.get(0)!==""){
       if (req.params.testProd==='prod'){
-        var configServer=cache.get(0);
+        var configServer=cacheConfig.get(0);
       } else {
-        configServer=cache.get(1);
+        configServer=cacheConfig.get(1);
       }
         //console.log('configServer retrieved from cache(0)');
         return res.send(configServer);
@@ -132,8 +155,8 @@ const findConfig = async  (req, res) => {
               .then(data => {
                   testData=JSON.stringify(data);
                   const record = JSON.parse(testData);
-                  cache.set(0, record[0]); // prod
-                  cache.set(1, record[1]); // test
+                  cacheConfig.set(0, record[0]); // prod
+                  cacheConfig.set(1, record[1]); // test
                   return res.send(data);
               })
               .catch(err => {
@@ -237,7 +260,7 @@ try{
 const getAllConfig  =  async (req, res) => {
   try{
 
-    cacheFn.fillCacheConsole('in getAllConfig req.params.collection=',req.params.collection);
+    cacheConsole.fillCacheConsole('in getAllConfig req.params.collection=',req.params.collection);
 
     //db.config.collection.collectionName=req.params.collection;
     //db.config.collection.name=req.params.collection;
@@ -288,6 +311,7 @@ module.exports = {
   getAllConfig,
   uploadConfig,
   updateConfig,
+  getFilesToCache,
   findConfigBytring,
   findConfig,
   resetConfig,

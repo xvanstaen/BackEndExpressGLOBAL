@@ -8,6 +8,7 @@ const authFn =  require("../controllers/authFn.js");
 const cryptoFn =  require("../controllers/cryptoFn.js");
 const config =  require("../controllers/config.controller.js");
 const cacheFn =  require("../controllers/cacheFunctions.js");
+const cacheConsole =  require("../controllers/cacheConsole.js");
 
 let routes = (app) => {
   router.post("/upload/:projectId/:name/:testProd/:cacheControl/:contentType", fileCtrl.upload);
@@ -31,8 +32,8 @@ let routes = (app) => {
   router.get("/reloadCacheFile/:projectId/:testProd", cacheFn.reloadCacheFile);
   router.get("/insertCacheFile/:projectId/:testProd/:name", cacheFn.insertCacheFile);
 
-  router.get("/getCacheConsole/:projectId/:testProd", cacheFn.getCacheConsole);
-  router.get("/resetCacheConsole/:projectId/:testProd", cacheFn.resetCacheConsole);
+  router.get("/getCacheConsole/:projectId/:testProd", cacheConsole.getCacheConsole);
+  router.get("/resetCacheConsole/:projectId/:testProd", cacheConsole.resetCacheConsole);
 
   router.get("/serverVersion/:projectId/:testProd", cacheFn.getServerVersion);
 

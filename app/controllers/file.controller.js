@@ -23,6 +23,7 @@ const stdFunctions = require("./stdFunctions");
 const cryptoFn = require("./cryptoFn");
 const configData = require("./tutorial.controller");
 const cacheFn = require("./cacheFunctions.js");
+const cacheConsole = require("./cacheConsole.js");
 
 var bucketCrypto='xmv-cryptodata';
 var bucketLogin='manage-login';
@@ -92,7 +93,7 @@ const getFileContent = async (req, res) => {
     if (i<listFiles.length  && (cache.get(i)) && listFiles[i].updated===false) {
         console.log('retrieve file  ' + req.params.name + ' from cache ' + i);
 
-        cacheFn.fillCacheConsole('retrieve file '+ req.params.name + ' from cache ' + i + " listFiles=","listFiles");
+        cacheConsole.fillCacheConsole('retrieve file '+ req.params.name + ' from cache ' + i + " listFiles=","listFiles");
         
         res.status(200).send(cache.get(i));
     } 
@@ -106,7 +107,7 @@ const getFileContent = async (req, res) => {
     res.redirect(metaData.mediaLink);
      */
     console.log('retrieve file '+ req.params.name);
-    cacheFn.fillCacheConsole('retrieve file '+ req.params.name ,listFiles);
+    cacheConsole.fillCacheConsole('retrieve file '+ req.params.name ,listFiles);
     const [downloadFile] = await bucket.file(req.params.name).download();        
     try{
       const theJson=JSON.parse(downloadFile)
@@ -250,7 +251,7 @@ const upload =async (req, res) => {
 const uploadMetaPerso =async (req, res) => {
   try {
 
-    cacheFn.fillCacheConsole('in uploadMetaPerso',"");
+    cacheConsole.fillCacheConsole('in uploadMetaPerso',"");
 
     const storage = await authFn.getClient(req.params.projectId);
    
