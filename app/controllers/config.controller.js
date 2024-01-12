@@ -3,12 +3,8 @@
 const mongoose = require("mongoose");
 mongoose.set('strictQuery', false);
 mongoose.Promise = global.Promise;
-const dbConfig = require("../config/db.config.js"); // contains the mongodb url
-
 
 var dbConf = {};
-//dbConf.url = dbConfig.url;
-//dbConf.mongoose = mongoose;
 dbConf.config = require("../models/config.model")(mongoose);
 dbConf.config.collection.name='configServer';
 dbConf.config.collection.collectionName='configServer';
@@ -148,8 +144,7 @@ const findConfig = async  (req, res) => {
           if (req.params.db!==''){
             current_dbName=req.params.db;
           } 
-          //db.config.collection.collectionName=req.params.collection;
-          //db.config.collection.name=req.params.collection;
+
           await accessMongo.accessMongo(CONFIG, req.params.db);
 
           CONFIG.find()
@@ -180,8 +175,7 @@ const findConfigBytring = async (req, res) => {
           if (req.params.db!==''){
               current_dbName=req.params.db;
           }
-          //db.config.collection.collectionName=req.params.collection;
-          //db.config.collection.name=req.params.collection;
+
           await accessMongo.accessMongo(CONFIG, req.params.db);
 
           CONFIG.find(condition)
@@ -205,8 +199,7 @@ const findConfigBytring = async (req, res) => {
 // Update configServer by the id in the request
 const updateConfig = async (req, res) => {
   try{
-  //db.config.collection.collectionName=req.params.collection;
-  //db.config.collection.name=req.params.collection;
+
   await accessMongo.accessMongo(CONFIG, req.params.db);
 
   if (!req.body) {
@@ -238,8 +231,7 @@ const updateConfig = async (req, res) => {
 // Save config
 const uploadConfig = async (req, res) => {
 try{
-  db.config.collection.collectionName=req.params.collection;
-  db.config.collection.name=req.params.collection;
+
   await accessMongo.accessMongo(CONFIG, req.params.db);
   var configData=new CONFIG(req.body);
   configData.save()
