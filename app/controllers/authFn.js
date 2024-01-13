@@ -105,28 +105,39 @@ async function fnGetNewServerUsrId(projectId){
 }
 
 const getCredentials= async (req, res) => {
- 
-    const auth = new GoogleAuth({
-      scope: scopes,
-      projectId: req.params.projectId
-    });
-    const client = await auth.getClient();
-    const storageOptions = {
-      projectId: req.params.projectId,
-      authClient: client,
-    };
-    const storage = new Storage(storageOptions);
-     
-    const bucket = storage.bucket(req.query.bucket);
-    bucket.projectId=req.params.projectId;
-     
-    const [metaData] = await bucket.file(req.params.name).getMetadata();
-  
-    const credentials= {access_token:client.credentials.access_token,id_token:client.credentials.id_token
-        , refresh_token:client.credentials.refresh_token, token_type:client.credentials.token_type}
-    
-    res.status(200).send({credentials:credentials});
-  
+    try{
+      const auth = new GoogleAuth({
+        scope: scopes,
+        projectId: req.params.projectId
+      });
+      const client = await auth.getClient();
+      const storageOptions = {
+        projectId: req.params.projectId,
+        authClient: client,
+      };
+      const storage = new Storage(storageOptions);
+      
+      //const bucket = storage.bucket(req.query.bucket);
+      //bucket.projectId=req.params.projectId;
+      
+      
+      const url = `https://dns.googleapis.com/dns/v1/projects/${req.params.projectId}`;
+
+      const theResponse = await client.request({ url });
+      // console.log(theResponse.data);
+      try{
+        const myDate = stdFunctions.defineMyDate();
+        const credentials= {access_token:client.credentials.access_token,id_token:client.credentials.id_token
+          , refresh_token:client.credentials.refresh_token, token_type:client.credentials.token_type, userServerId:0, creationDate:myDate}
+          res.status(200).send({status:200,credentials:credentials});
+      }
+      catch (err){
+          res.status(710).send({status:710, err:err});
+      }
+    }
+    catch (err){
+      res.status(720).send({status:710, err:err});
+    }
   }
 
 const  checkAccessToken = async (req, res) => {
