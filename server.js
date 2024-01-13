@@ -19,7 +19,7 @@ const initRoutes = require("./app/routes");
 initRoutes(app);
 
 const mongoConfig = require("./app/controllers/config.controller.js");
-const cacheFn = require("./app/controllers/cacheFunctions.js");
+const versionFn = require("./app/controllers/versionServerFn.js");
 
 mongoConfig.getConfigServer()
 .then( async (res) => {
@@ -52,7 +52,7 @@ mongoConfig.getConfigServer()
 
 
 function displayStatus(code, nbRecords){
-  const myVersion=cacheFn.serverVersion();
+  const myVersion=versionFn.serverVersion();
   var configData = "";
   if (code===200){
     configData=" configData (" + nbRecords + "found) retrieved in MongoDB";
