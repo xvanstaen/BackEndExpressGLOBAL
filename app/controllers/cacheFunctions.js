@@ -7,7 +7,7 @@ const stdFunctions = require("./stdFunctions");
 const config = require("./config.controller");
 
 function serverVersion(){
-  const myVersion="Version 12Jan2024 V0-1";
+  const myVersion="Version 12Jan2024 V0-2";
   return(myVersion)
 }
 
