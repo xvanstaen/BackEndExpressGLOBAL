@@ -7,6 +7,7 @@
         title:String,
         test_prod:String,
         GoogleProjectId:String,
+        project:String,
         consoleBucket:String,
         googleServer:String,
         mongoServer:String,
