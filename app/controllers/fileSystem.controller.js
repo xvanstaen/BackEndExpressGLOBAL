@@ -23,6 +23,7 @@ var lockFileSystem=[];
 const onFileSystem = async (req, res) => {
   var credentials='';
   var myFileSystem=[];
+  var theMsg="";
   try {
     var tabLock=JSON.parse(req.params.tabLock);
 
@@ -46,17 +47,17 @@ const onFileSystem = async (req, res) => {
           if (i< myFileSystem.length && myFileSystem[i].credentialDate === credentials.creationDate) {
             // need to check if timeout occured; if NO then return msg to the requesting app-user otherwise assign the record to this user
           
-            const timeOutValue=fnAddTime(myFileSystem[i].updatedAt,myFileSystem[i].timeoutFileSystem.hh,myFileSystem[i].timeoutFileSystem.mn);
+            const timeOutValue=stdFunctions.fnAddTime(myFileSystem[i].updatedAt,myFileSystem[i].timeoutFileSystem.hh,myFileSystem[i].timeoutFileSystem.mn);
             const currentTime=defineMyDate();
             if (Number(currentTime) <= Number(timeOutValue)){
-              const theMsg='File System: server was reset and file is locked by another user';
+              theMsg="File System: server was reset and file is locked by another user; didn't reach time out";
               console.log(theMsg);
               cacheConsole.fillCacheConsole(theMsg,{status:956})
               return res.send({msg: theMsg, status:956});   
             }
-              const theMsg='File System: server was reset, file was locked by another user but timeout occured;';
-              console.log(theMsg);
-              const theCode=cacheConsole.fillCacheConsole(theMsg,{updatedAt:myFileSystem[i].updatedAt,timeOut:timeOutValue,currentTime:currentTime});
+            theMsg='File System: server was reset, file was locked by another user but timeout occured;';
+            console.log(theMsg);
+            const theCode=cacheConsole.fillCacheConsole(theMsg,{updatedAt:myFileSystem[i].updatedAt,timeOut:timeOutValue,currentTime:currentTime});
           } 
       }
       /*
@@ -72,11 +73,11 @@ const onFileSystem = async (req, res) => {
         resetInUseFileSystem(tabLock[req.params.iWait]); // ensure that corresponding memory data is released
         // last update was performed by same user or timeout occured for the other user
         if (myFileSystem.length>0){
-            myFileSystem.splice(i,0);
+            myFileSystem.splice(i,1);
             const code = await saveFS(req.params.projectId, req.query.bucket,tabLock[req.params.iWait].objectName,JSON.stringify(myFileSystem),tabLock[req.params.iWait]);
-            const theMsg='File System: server was reset and same user re-accesses the file; new FS record is';
+            theMsg='File System: server was reset and same user re-accesses the file; new FS record is';
         } else {
-            const theMsg='File System: server was reset and same user re-accesses the file which indeed is empty';
+            theMsg='File System: server was reset and same user re-accesses the file which indeed is empty';
         }
         cacheConsole.fillCacheConsole(theMsg,myFileSystem);
         console.log(theMsg);
