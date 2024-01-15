@@ -50,11 +50,11 @@ const getMedialinkContent = async (req, res) => {
   const [metaData] = await bucket.file(req.params.name).getMetadata();
   console.log("File searched at " + metaData.mediaLink);
   try {
-      res.redirect(metaData.mediaLink);
+    return res.redirect(metaData.mediaLink);
   }
   catch(err){
     console.log("Could not get the file " + metaData.mediaLink + '  error==>' + err);
-    res.status(405).send( { message:"Could not get the file " + metaData.mediaLink, error: err } );
+    return res.status(405).send( { message:"Could not get the file " + metaData.mediaLink, error: err } );
   }
 }
 /******************************************************************************
@@ -77,11 +77,11 @@ const getTextFile= async (req, res) => {
 
       var myData={text:""};
       myData.text=downloadFile.toString();
-      res.status(200).send(myData);
+      return res.status(200).send(myData);
     }
     catch(err){
       console.log("Could not get the file " +req.params.name + '  error==>' + err);
-      res.status(404).send( { message:"Could not get the file. ", error: err } );
+      return res.status(404).send( { message:"Could not get the file. ", error: err } );
     }
 }
 
@@ -93,9 +93,9 @@ const getFileContent = async (req, res) => {
     if (i<listFiles.length  && (cache.get(i)) && listFiles[i].updated===false) {
         console.log('retrieve file  ' + req.params.name + ' from cache ' + i);
 
-        cacheConsole.fillCacheConsole('retrieve file '+ req.params.name + ' from cache ' + i + " listFiles=","listFiles");
+        //cacheConsole.fillCacheConsole('retrieve file '+ req.params.name + ' from cache ' + i + " listFiles=","listFiles");
         
-        res.status(200).send(cache.get(i));
+        return res.status(200).send(cache.get(i));
     } 
     const storage = await authFn.getClient(req.params.projectId);
     var bucket = storage.bucket(req.query.bucket);
@@ -107,7 +107,7 @@ const getFileContent = async (req, res) => {
     res.redirect(metaData.mediaLink);
      */
     console.log('retrieve file '+ req.params.name);
-    cacheConsole.fillCacheConsole('retrieve file '+ req.params.name ,listFiles);
+    //cacheConsole.fillCacheConsole('retrieve file '+ req.params.name ,listFiles);
     const [downloadFile] = await bucket.file(req.params.name).download();        
     try{
       const theJson=JSON.parse(downloadFile)
@@ -116,17 +116,17 @@ const getFileContent = async (req, res) => {
           cache.set(i,theJson);
           console.log('retrieved file  ' + req.params.name + ' & update of cache ' + i);
       }
-      res.status(200).send(theJson);
+      return res.status(200).send(theJson);
     } 
     catch(err){
       var myData={text:""};
       myData.text=downloadFile.toString();
-      res.status(200).send(myData);
+      return res.status(200).send(myData);
     }
   }
   catch (err) {
     console.log("Could not get the file " +req.params.name + '  error==>' + err);
-    res.status(404).send( { message:"Could not get the file. ", error: err } );
+    return res.status(404).send( { message:"Could not get the file. ", error: err } );
   }
 };
 
@@ -147,18 +147,18 @@ const  checkLogin = async (req, res) => {
     const myDecrypt = await getUserPswRecord(req.params.projectId,req.params.userId );
     
     if (myDecrypt.data === "Key invalid" || myDecrypt.data !== req.params.psw){
-      res.status(700).send({error:"invalid id/psw"});
+      return res.status(700).send({error:"invalid id/psw"});
     } else {
       const storage = await authFn.getClient(req.params.projectId);
       var bucket = storage.bucket(myDecrypt.bucketUserInfo);
       bucket.projectId=req.params.projectId;
       const [downloadFile] = await bucket.file(req.params.userId+'.json').download();
-      res.status(200).send(JSON.parse(downloadFile));
+      return res.status(200).send(JSON.parse(downloadFile));
     }
   }
   catch (err) {
     console.log("CHECK LOGIN - could not get the file. " + err);
-    res.status(404).send( { message:"Could not get the file. ", error: err } );
+    return res.status(404).send( { message:"Could not get the file. ", error: err } );
   }
 }
 
@@ -199,7 +199,7 @@ const upload =async (req, res) => {
     });
 
     blobStream.on("error", (err) => {
-      res.status(505).send({ message: err.message });
+      return res.status(505).send({ message: err.message });
     });
     blobStream.on("finish", async (data) => {
       // Create URL for directly file access via HTTP.
@@ -238,20 +238,20 @@ const upload =async (req, res) => {
             //tabFile.set(0, listFiles);
             cacheFn.fillCacheFileUpdate(i,true);
         }
-        res.status(200).send({
+        return res.status(200).send({
           message: "Uploaded the file successfully: " + req.file.originalname
         });
     });
     blobStream.end(req.file.buffer);
   } catch (err) {
-    res.status(515).send({message: `Could not upload the file: ${req.file.originalname}. ${err}` });
+    return res.status(515).send({message: `Could not upload the file: ${req.file.originalname}. ${err}` });
   }
 };
 
 const uploadMetaPerso =async (req, res) => {
   try {
 
-    cacheConsole.fillCacheConsole('in uploadMetaPerso',"");
+    //cacheConsole.fillCacheConsole('in uploadMetaPerso',"");
 
     const storage = await authFn.getClient(req.params.projectId);
    
@@ -303,7 +303,7 @@ const uploadMetaPerso =async (req, res) => {
     const blobStream = blob.createWriteStream(JSON.parse(persoMeta)); 
 
     blobStream.on("error", (err) => {
-      res.status(505).send({ message: err.message });
+      return res.status(505).send({ message: err.message });
     });
     blobStream.on("finish", async (data) => {
     const theValue=await cacheFn.cacheFiles(req.params.testProd, req.params.name, req.query.bucket);
@@ -315,13 +315,13 @@ const uploadMetaPerso =async (req, res) => {
         //tabFile.set(0, listFiles);
         cacheFn.fillCacheFileUpdate(i,true);
     }
-    res.status(200).send({
+    return res.status(200).send({
           message: "Uploaded the file successfully: " + req.file.originalname
         });
     });
     blobStream.end(req.file.buffer);
   } catch (err) {
-    res.status(517).send({message: `Could not upload the file: ${req.file.originalname}. ${err}` });
+    return res.status(517).send({message: `Could not upload the file: ${req.file.originalname}. ${err}` });
   }
 };
 
@@ -368,9 +368,9 @@ const updateMeta = async (req, res) => {
       const [metaDataPerso] = await bucket.file(req.params.name).setMetadata(JSON.parse(persoMeta));
       console.log('metadata='+metaDataPerso);
     
-      res.status(200).send({message: "MetaData successfully updated ",metaData:metaDataPerso});
+      return res.status(200).send({message: "MetaData successfully updated ",metaData:metaDataPerso});
   } catch (err) {
-      res.status(500).send({ message: "MetaData not updated - returned error is " + err });
+    return res.status(500).send({ message: "MetaData not updated - returned error is " + err });
   }
 }
 
@@ -388,9 +388,9 @@ const getListFiles = async (req, res) => {
         url: file.metadata.mediaLink,
       });
     });
-    res.status(200).send(fileInfos);
+    return res.status(200).send(fileInfos);
   } catch (err) {
-    res.status(500).send({ message: "Unable to read list of files!" });
+    return res.status(500).send({ message: "Unable to read list of files!" });
   }
 };
 
@@ -407,10 +407,10 @@ const getListMetaDataFiles = async (req, res) => {
         items: file.metadata,
       });
     });
-    res.status(200).send(fileInfos);
+    return res.status(200).send(fileInfos);
   } catch (err) {
     console.log(err);
-    res.status(500).send({
+    return res.status(500).send({
       message: "Unable to read list of files!",
     });
   }
@@ -423,10 +423,10 @@ const getObjectMeta = async (req, res) => {
     var bucket = storage.bucket(req.query.bucket);
     bucket.projectId=req.params.projectId;
     const [metaData] = await bucket.file(req.params.name).getMetadata();
-    res.status(200).send(metaData);
+    return res.status(200).send(metaData);
     
   } catch (err) {
-    res.status(500).send({
+    return res.status(500).send({
       message: "Could not download the file. " + err,
     });
   }
@@ -442,9 +442,9 @@ const listBuckets = async (req, res) => {
       if (bucket.name !== bucketCrypto & bucket.name !== bucketLogin)
         BuckInfos.push({name: bucket.name});
     });
-    res.status(200).send(BuckInfos);
+    return res.status(200).send(BuckInfos);
   } catch (err) {
-    res.status(500).send({
+    return res.status(500).send({
       message: "Could not find the buckets " + err,
     });
   }
@@ -458,11 +458,11 @@ const copyObject = async (req, res) => {
     await bucket.file(req.params.SRCname)
     .copy(storage.bucket(req.params.DESTbucket).file(req.params.DESTname));
 
-    res.status(200).send({
+    return res.status(200).send({
       message: "Object is copied as" + req.params.DESTname + ' in bucket ' + req.params.DESTbucket
     });
   } catch (err) {
-    res.status(505).send({
+    return res.status(505).send({
       message: "Could not copy the object " + err,
     });
   }
@@ -478,9 +478,9 @@ const moveObject = async (req, res) => {
     bucket.projectId=req.params.projectId;
     await bucket.file(req.params.SRCname)
     .move(storage.bucket(req.params.DESTbucket).file(req.params.DESTname));
-    res.status(200).send({message: "Object moved to bucket " + req.params.DESTbucket});
+    return res.status(200).send({message: "Object moved to bucket " + req.params.DESTbucket});
   } catch (err) {
-    res.status(502).send({
+    return res.status(502).send({
       message: "Could not move the object to bucket " + req.params.DESTbucket + 
       'Parameters: DESTbucket=' + DestBucket + 
       ' SRCobject=' + SRCObject  + ' Destobject=' + DestObject + ' error=' + err});
@@ -492,13 +492,12 @@ const renameObject = async (req, res) => {
     const storage = await authFn.getClient(req.params.projectId);
     var bucket = storage.bucket(req.query.bucket);
     bucket.projectId=req.params.projectId;
-    await bucket.file(req.params.SRCname)
-    .rename(req.params.DESTname);
-    res.status(200).send({
+    await bucket.file(req.params.SRCname).rename(req.params.DESTname);
+    return res.status(200).send({
       message: "Object is renamed "
     });
   } catch (err) {
-    res.status(500).send({ message: "Could not rename the object " + err});
+    return res.status(500).send({ message: "Could not rename the object " + err});
   }
 };
 
@@ -509,9 +508,9 @@ const deleteObject = async (req, res) => {
     var bucket = storage.bucket(req.query.bucket);
     bucket.projectId=req.params.projectId;
     await bucket.file(req.params.name).delete();
-    res.status(200).send({message: "Object is deleted"});
+    return res.status(200).send({message: "Object is deleted"});
   } catch (err) {
-    res.status(500).send({message: "Could not delete the object " + err});
+    return res.status(500).send({message: "Could not delete the object " + err});
   }
 };
 

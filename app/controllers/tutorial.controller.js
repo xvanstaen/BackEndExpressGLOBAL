@@ -262,7 +262,7 @@ const findById = async (req, res) => {
 // Find all records
 const findAll = async (req, res) => {
   const collection=req.params.collection;
-  cacheConsole.fillCacheConsole('in findAll req.params.collection=',collection);
+  //cacheConsole.fillCacheConsole('in findAll req.params.collection=',collection);
   const theValue=await accessDB(req.params.db,collection,"");
   if (theValue.message!==undefined){
     return  res.status(520).send({status:520, message:theValue.message});
@@ -281,7 +281,7 @@ const findAll = async (req, res) => {
         });
     }
   catch(err) {
-    cacheConsole.fillCacheConsole('in findAll status=521', err.message);
+    //cacheConsole.fillCacheConsole('in findAll status=521', err.message);
       return res.status(521).send({status:521, message:"FAILURE " + err.message});
     };
   
