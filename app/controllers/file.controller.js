@@ -24,6 +24,7 @@ const cryptoFn = require("./cryptoFn");
 const configData = require("./tutorial.controller");
 const cacheFn = require("./cacheFunctions.js");
 const cacheConsole = require("./cacheConsole.js");
+const securityCtrl = require("./securityCtrl.js");
 
 var bucketCrypto='xmv-cryptodata';
 var bucketLogin='manage-login';
@@ -44,17 +45,31 @@ async function  enableUniformBucketLevelAccess(bucketName, storage) {
 
 
 const getMedialinkContent = async (req, res) => {
-  const storage = await authFn.getClient(req.params.projectId);
-  var bucket = storage.bucket(req.query.bucket);
-  bucket.projectId=req.params.projectId;
-  const [metaData] = await bucket.file(req.params.name).getMetadata();
-  console.log("File searched at " + metaData.mediaLink);
-  try {
-    return res.redirect(metaData.mediaLink);
+  try{
+    if (bucket.name === bucketCrypto || bucket.name === bucketLogin){
+      const securityLevel= await securityCtrl.getSecurityAccess(req.params.projectId, req.params.userId,req.params.userPSW);
+      if (securityLevel.status!==200){
+        return res.send(securityLevel);
+      } 
+      if (securityLevel.accessLevel!=='Very High'){
+        return res.send({status:585,msg:"you don't have the right level of security access"});
+      }
+    }
+    const storage = await authFn.getClient(req.params.projectId);
+    var bucket = storage.bucket(req.query.bucket);
+    bucket.projectId=req.params.projectId;
+    const [metaData] = await bucket.file(req.params.name).getMetadata();
+    console.log("File searched at " + metaData.mediaLink);
+    try {
+      return res.redirect(metaData.mediaLink);
+    }
+    catch(err){
+      console.log("Could not get the file " + metaData.mediaLink + '  error==>' + err);
+      return res.status(405).send( { status:405, msg:"Could not get the file " + metaData.mediaLink, error: err } );
+    }
   }
-  catch(err){
-    console.log("Could not get the file " + metaData.mediaLink + '  error==>' + err);
-    return res.status(405).send( { message:"Could not get the file " + metaData.mediaLink, error: err } );
+  catch (err){
+    return res.send({status:700,msg:'System failure ' + err})
   }
 }
 /******************************************************************************
@@ -68,9 +83,10 @@ const getMedialinkContent = async (req, res) => {
 
 ********************************************************************************/
 const getTextFile= async (req, res) => {
-  const storage = await authFn.getClient(req.params.projectId);
-  var bucket = storage.bucket(req.query.bucket);
-  bucket.projectId=req.params.projectId;
+  try{
+    const storage = await authFn.getClient(req.params.projectId);
+    var bucket = storage.bucket(req.query.bucket);
+    bucket.projectId=req.params.projectId;
   
     const [downloadFile] = await bucket.file(req.params.name).download();
     try{
@@ -81,12 +97,25 @@ const getTextFile= async (req, res) => {
     }
     catch(err){
       console.log("Could not get the file " +req.params.name + '  error==>' + err);
-      return res.status(404).send( { message:"Could not get the file. ", error: err } );
+      return res.status(405).send( { status:405, msg:"Could not get the file. ", error: err } );
     }
+  }
+  catch (err){
+    return res.send({status:700,msg:'System failure ' + err})
+  }
 }
 
 const getFileContent = async (req, res) => {
   try {
+    if (bucket.name === bucketCrypto || bucket.name === bucketLogin){
+      const securityLevel= await securityCtrl.getSecurityAccess(req.params.projectId, req.params.userId,req.params.userPSW);
+      if (securityLevel.status!==200){
+        return res.send(securityLevel);
+      } 
+      if (securityLevel.accessLevel!=='Very High'){
+        return res.send({status:585,msg:"you don't have the right level of security access"});
+      }
+    }
     const theValue=await cacheFn.cacheFiles(req.params.testProd, req.params.name, req.query.bucket);
     var listFiles=theValue.tab;
     const i = theValue.record;
@@ -126,46 +155,47 @@ const getFileContent = async (req, res) => {
   }
   catch (err) {
     console.log("Could not get the file " +req.params.name + '  error==>' + err);
-    return res.status(404).send( { message:"Could not get the file. ", error: err } );
+    return res.send({status:700,msg:'System failure ' + err});
   }
 };
 
-async function getUserPswRecord(projectId, userId){
-  const storage = await authFn.getClient(projectId);
-  var bucket = storage.bucket(bucketLogin);
-  bucket.projectId=projectId;
 
-  const [downloadFile] = await bucket.file(userId+'PSW.json').download();
-
-  const decrypt = await cryptoFn.getDecrypt(JSON.parse(downloadFile).psw , JSON.parse(downloadFile).key, JSON.parse(downloadFile).method ,0, projectId)
-  return ({data:decrypt, bucketUserInfo:JSON.parse(downloadFile).bucketUserInfo});
-}
 
 
 const  checkLogin = async (req, res) => {
   try {
-    const myDecrypt = await getUserPswRecord(req.params.projectId,req.params.userId );
+    const myDecrypt = await securityCtrl.getUserPswRecord(req.params.projectId,req.params.userId );
     
     if (myDecrypt.data === "Key invalid" || myDecrypt.data !== req.params.psw){
-      return res.status(700).send({error:"invalid id/psw"});
-    } else {
-      const storage = await authFn.getClient(req.params.projectId);
-      var bucket = storage.bucket(myDecrypt.bucketUserInfo);
-      bucket.projectId=req.params.projectId;
-      const [downloadFile] = await bucket.file(req.params.userId+'.json').download();
-      return res.status(200).send(JSON.parse(downloadFile));
-    }
+      return res.status(520).send({msg:"invalid id/psw", status:520});
+    } 
+    const storage = await authFn.getClient(req.params.projectId);
+    var bucket = storage.bucket(myDecrypt.bucketUserInfo);
+    bucket.projectId=req.params.projectId;
+    const [downloadFile] = await bucket.file(req.params.userId+'.json').download();
+    return res.status(200).send(JSON.parse(downloadFile));
+    
   }
   catch (err) {
     console.log("CHECK LOGIN - could not get the file. " + err);
-    return res.status(404).send( { message:"Could not get the file. ", error: err } );
+    return res.send({status:700,msg:'System failure ' + err})
   }
 }
 
 
 const upload =async (req, res) => {
-  try {
     //console.log(' ===> upload');
+  try {
+      if (bucket.name === bucketCrypto || bucket.name === bucketLogin){
+        const securityLevel= await securityCtrl.getSecurityAccess(req.params.projectId, req.params.userId,req.params.userPSW);
+        if (securityLevel.status!==200){
+          return res.send(securityLevel);
+        } 
+        if (securityLevel.accessLevel!=='Very High'){
+          return res.send({status:585,msg:"you don't have the right level of security access"});
+        }
+      }
+      
     const storage = await authFn.getClient(req.params.projectId);
    
     var bucket = storage.bucket(req.query.bucket);
@@ -174,24 +204,14 @@ const upload =async (req, res) => {
     
     await processFile(req, res);
     if (!req.file) {
-      return res.status(400).send({ message: "Please upload a file!" });
+      return res.status(405).send({status:405, msg: "Please upload a file!" });
     }
 
     // Create a new blob in the bucket and upload the file data. req.params.name
     const blob = bucket.file(req.file.originalname);
-    /*
-    if (req.params.contentType==='json') {
-      var theType='application/json';
-    } else if (req.params.contentType==='text') {
-      var theType='text/plain';
-    } else {
-      theType = req.params.contentType;
-    }
-    */
+
     const blobStream = blob.createWriteStream({
       metadata: {
-        //cacheControl: 'public,max-age=0,no-cache,no-store',
-        //contentType: 'application/json'
         cacheControl: req.params.cacheControl,
         contentType: req.params.contentType
       },
@@ -199,7 +219,7 @@ const upload =async (req, res) => {
     });
 
     blobStream.on("error", (err) => {
-      return res.status(505).send({ message: err.message });
+      return res.status(505).send({ status:505, msg: err.message });
     });
     blobStream.on("finish", async (data) => {
       // Create URL for directly file access via HTTP.
@@ -239,12 +259,13 @@ const upload =async (req, res) => {
             cacheFn.fillCacheFileUpdate(i,true);
         }
         return res.status(200).send({
-          message: "Uploaded the file successfully: " + req.file.originalname
+          msg: "Uploaded the file successfully: " + req.file.originalname
         });
     });
     blobStream.end(req.file.buffer);
-  } catch (err) {
-    return res.status(515).send({message: `Could not upload the file: ${req.file.originalname}. ${err}` });
+  } 
+  catch (err) {
+    return res.send({status:700,msg:'System failure ' + err})
   }
 };
 
@@ -261,7 +282,7 @@ const uploadMetaPerso =async (req, res) => {
     
     await processFile(req, res);
     if (!req.file) {
-      return res.status(400).send({ message: "Please upload a file!" });
+      return res.status(405).send({ status:405, msg: "Please upload a file!" });
     }
 
     // Create a new blob in the bucket and upload the file data. req.params.name
@@ -303,7 +324,7 @@ const uploadMetaPerso =async (req, res) => {
     const blobStream = blob.createWriteStream(JSON.parse(persoMeta)); 
 
     blobStream.on("error", (err) => {
-      return res.status(505).send({ message: err.message });
+      return res.status(505).send({status:505,  msg: err.message });
     });
     blobStream.on("finish", async (data) => {
     const theValue=await cacheFn.cacheFiles(req.params.testProd, req.params.name, req.query.bucket);
@@ -315,13 +336,11 @@ const uploadMetaPerso =async (req, res) => {
         //tabFile.set(0, listFiles);
         cacheFn.fillCacheFileUpdate(i,true);
     }
-    return res.status(200).send({
-          message: "Uploaded the file successfully: " + req.file.originalname
-        });
+    return res.status(200).send({status:200, msg: "Uploaded the file successfully: " + req.file.originalname});
     });
     blobStream.end(req.file.buffer);
   } catch (err) {
-    return res.status(517).send({message: `Could not upload the file: ${req.file.originalname}. ${err}` });
+    return res.send({status:700,msg:'System failure ' + err})
   }
 };
 
@@ -368,9 +387,9 @@ const updateMeta = async (req, res) => {
       const [metaDataPerso] = await bucket.file(req.params.name).setMetadata(JSON.parse(persoMeta));
       console.log('metadata='+metaDataPerso);
     
-      return res.status(200).send({message: "MetaData successfully updated ",metaData:metaDataPerso});
+      return res.status(200).send({status:200, msg: "MetaData successfully updated ",metaData:metaDataPerso});
   } catch (err) {
-    return res.status(500).send({ message: "MetaData not updated - returned error is " + err });
+    return res.send({status:700,msg:'System failure ' + err});
   }
 }
 
@@ -390,7 +409,7 @@ const getListFiles = async (req, res) => {
     });
     return res.status(200).send(fileInfos);
   } catch (err) {
-    return res.status(500).send({ message: "Unable to read list of files!" });
+    return res.send({status:700,msg:'System failure ' + err});
   }
 };
 
@@ -410,9 +429,7 @@ const getListMetaDataFiles = async (req, res) => {
     return res.status(200).send(fileInfos);
   } catch (err) {
     console.log(err);
-    return res.status(500).send({
-      message: "Unable to read list of files!",
-    });
+    return res.send({status:700,msg:'System failure ' + err});
   }
 };
 
@@ -426,91 +443,136 @@ const getObjectMeta = async (req, res) => {
     return res.status(200).send(metaData);
     
   } catch (err) {
-    return res.status(500).send({
-      message: "Could not download the file. " + err,
-    });
+    return res.send({status:700,msg:'System failure ' + err});
   }
 };
 
 const listBuckets = async (req, res) => {
   try {
+    const securityLevel= await securityCtrl.getSecurityAccess(req.params.projectId, req.params.userId,req.params.userPSW);
+    if (securityLevel.status!==200){
+      return res.send(securityLevel);
+    } 
+
+    if (securityLevel.accessLevel!=='High' && securityLevel.accessLevel!=='Very High'){
+      return res.send({status:585,msg:"you don't have the right level of security access"});
+    }
     const storage = await authFn.getClient(req.params.projectId);
     storage.projectId=req.params.projectId;
     const [buckets] = await storage.getBuckets();
     let BuckInfos = [];
     buckets.forEach(bucket => {
-      if (bucket.name !== bucketCrypto & bucket.name !== bucketLogin)
+      if (securityLevel.accessLevel==='Very High' || (bucket.name !== bucketCrypto && bucket.name !== bucketLogin))
         BuckInfos.push({name: bucket.name});
     });
     return res.status(200).send(BuckInfos);
   } catch (err) {
-    return res.status(500).send({
-      message: "Could not find the buckets " + err,
-    });
+    return res.send({status:700,msg:'System failure ' + err});
   }
 };
 
 const copyObject = async (req, res) => {
   try {
+    const securityLevel= await securityCtrl.getSecurityAccess(req.params.projectId, req.params.userId,req.params.userPSW);
+    if (securityLevel.status!==200){
+      return res.send(securityLevel);
+    } 
+
+    if (securityLevel.accessLevel!=='High' && securityLevel.accessLevel!=='Very High'){
+      return res.send({status:585,msg:"you don't have the right level of security access"});
+    }
     const storage = await authFn.getClient(req.params.projectId);
     var bucket = storage.bucket(req.query.bucket);
     bucket.projectId=req.params.projectId;
-    await bucket.file(req.params.SRCname)
-    .copy(storage.bucket(req.params.DESTbucket).file(req.params.DESTname));
-
-    return res.status(200).send({
-      message: "Object is copied as" + req.params.DESTname + ' in bucket ' + req.params.DESTbucket
-    });
+    await bucket.file(req.params.SRCname).copy(storage.bucket(req.params.DESTbucket).file(req.params.DESTname));
+    try {
+      return res.status(200).send({status:200,msg: "Object is copied as" + req.params.DESTname + ' in bucket ' + req.params.DESTbucket});
+    }
+    catch (err) {
+      return res.send({status:220,msg:'Could not copy object as '  + req.params.DESTname + ' in bucket ' + req.params.DESTbucket + ' error '+ err});
+    }
   } catch (err) {
-    return res.status(505).send({
-      message: "Could not copy the object " + err,
-    });
+    return res.send({status:700,msg:'System failure ' + err});
   }
 };
 
 const moveObject = async (req, res) => {
   try {
+    const securityLevel= await securityCtrl.getSecurityAccess(req.params.projectId, req.params.userId,req.params.userPSW);
+    if (securityLevel.status!==200){
+      return res.send(securityLevel);
+    } 
+
+    if (securityLevel.accessLevel!=='High' && securityLevel.accessLevel!=='Very High'){
+      return res.send({status:585,msg:"you don't have the right level of security access"});
+    }
     var DestBucket=req.params.DESTbucket;
     var DestObject=req.params.DESTname;
     var SRCObject=req.params.SRCname;
     const storage = await authFn.getClient(req.params.projectId);
     const  bucket = storage.bucket(req.query.bucket);
     bucket.projectId=req.params.projectId;
-    await bucket.file(req.params.SRCname)
-    .move(storage.bucket(req.params.DESTbucket).file(req.params.DESTname));
-    return res.status(200).send({message: "Object moved to bucket " + req.params.DESTbucket});
+    await bucket.file(req.params.SRCname).move(storage.bucket(req.params.DESTbucket).file(req.params.DESTname));
+    try {
+      return res.status(200).send({status:200,msg: "Object moved to bucket " + req.params.DESTbucket});
+    }
+    catch (err) {
+      return res.send({status:220,msg:'Could not move object to bucket '  + req.params.DESTbucket + ' error '+ err});
+    }
   } catch (err) {
-    return res.status(502).send({
-      message: "Could not move the object to bucket " + req.params.DESTbucket + 
-      'Parameters: DESTbucket=' + DestBucket + 
-      ' SRCobject=' + SRCObject  + ' Destobject=' + DestObject + ' error=' + err});
+    return res.send({status:700,msg:'System failure ' + err});
   }
 };
 
 const renameObject = async (req, res) => {
   try {
+    const securityLevel= await securityCtrl.getSecurityAccess(req.params.projectId, req.params.userId,req.params.userPSW);
+    if (securityLevel.status!==200){
+      return res.send(securityLevel);
+    } 
+
+    if (securityLevel.accessLevel!=='High' && securityLevel.accessLevel!=='Very High'){
+      return res.send({status:585,msg:"you don't have the right level of security access"});
+    }
     const storage = await authFn.getClient(req.params.projectId);
     var bucket = storage.bucket(req.query.bucket);
     bucket.projectId=req.params.projectId;
     await bucket.file(req.params.SRCname).rename(req.params.DESTname);
-    return res.status(200).send({
-      message: "Object is renamed "
-    });
+    try {
+      return res.status(200).send({status:200,msg: "Object is renamed "});
+    }
+    catch (err) {
+      return res.send({status:220,msg:'Could not rename the object '  + ' error '+ err});
+    }
+    
   } catch (err) {
-    return res.status(500).send({ message: "Could not rename the object " + err});
+    return res.send({status:700,msg:'System failure ' + err});
   }
 };
 
 
 const deleteObject = async (req, res) => {
-  try {
+  try { 
+    const securityLevel= await securityCtrl.getSecurityAccess(req.params.projectId, req.params.userId,req.params.userPSW);
+    if (securityLevel.status!==200){
+      return res.send(securityLevel);
+    } 
+
+    if (securityLevel.accessLevel!=='High' && securityLevel.accessLevel!=='Very High'){
+      return res.send({status:585,msg:"you don't have the right level of security access"});
+    }
     const storage = await authFn.getClient(req.params.projectId);
     var bucket = storage.bucket(req.query.bucket);
     bucket.projectId=req.params.projectId;
     await bucket.file(req.params.name).delete();
-    return res.status(200).send({message: "Object is deleted"});
+    try {
+      return res.status(200).send({msg: "Object is deleted"});
+    }
+    catch (err) {
+      return res.send({status:220,msg:'Could not delete the object '  + ' error '+ err});
+    }
   } catch (err) {
-    return res.status(500).send({message: "Could not delete the object " + err});
+    return res.send({status:700,msg:'System failure ' + err});
   }
 };
 
@@ -529,7 +591,6 @@ module.exports = {
   moveObject,
   copyObject,
   checkLogin,
-  getUserPswRecord,
   getMedialinkContent,
   getTextFile,
 

@@ -1,6 +1,7 @@
 const nodecache = require('node-cache');
 var cacheConsole= new nodecache;
 const stdFunctions = require("./stdFunctions");
+const securityCtrl = require("./securityCtrl.js");
 
 function fillCacheConsole(theMsg, content){
    
@@ -23,18 +24,45 @@ function fillCacheConsole(theMsg, content){
   }
 
   const getCacheConsole=async (req, res) => {
-    if (cacheConsole.has(0)){
-      const theTab=cacheConsole.get(0);
-      return res.send({msg:theTab,status:0});
-    } else {
-      return res.send({msg:"nothing found in cacheConsole",status:0})
+    try{
+      const securityLevel= await securityCtrl.getSecurityAccess('xmv-it-consulting', req.params.userId,req.params.userPSW);
+      if (securityLevel.status!==200){
+        return res.send(securityLevel);
+      } 
+
+      if (securityLevel.accessLevel!=='Very High'){
+        return res.send({status:585,msg:"you don't have the permission to use this functionality"});
+      }
+    
+      if (cacheConsole.has(0)){
+        const theTab=cacheConsole.get(0);
+        return res.send({msg:theTab,status:200});
+      } else {
+        return res.send({msg:"nothing found in cacheConsole",status:220})
+      }
+    }
+    catch (err){
+      return res.status(521).send({status:521, msg:"FAILURE " + err.message});
     }
   }
   
   const resetCacheConsole=async (req, res) => {
-    var theTab=[];
-    cacheConsole.set(0, theTab);
-    return res.send({msg:"cacheConsole is reset",status:0})
+    try{
+      const securityLevel= await securityCtrl.getSecurityAccess('xmv-it-consulting', req.params.userId,req.params.userPSW);
+      if (securityLevel.status!==200){
+        return res.send(securityLevel);
+      } 
+
+      if (securityLevel.accessLevel!=='Very High'){
+        return res.send({status:585,msg:"you don't have the permission to use this functionality"});
+      }
+      var theTab=[];
+      cacheConsole.set(0, theTab);
+      return res.send({msg:"cacheConsole is reset",status:0})
+    }
+    catch (err){
+      return res.status(521).send({status:521, msg:"FAILURE " + err.message});
+    }
   }
   
   module.exports={

@@ -16,6 +16,7 @@ const dbName='ConfigDB';
 
 const accessMongo = require("./accessMongo.js"); 
 const cacheConsole = require("./cacheConsole.js");
+const securityCtrl = require("./securityCtrl.js");
 
 /* ================ */
 
@@ -109,21 +110,29 @@ const getFilesToCache = async function (testProd) {
     }  
   }
   catch(err) {
-    return res.status(521).send({status:521, message:"FAILURE " + err.message});
+    return res.status(521).send({status:521, msg:"FAILURE " + err.message});
   }; 
 }
 
-const resetCacheConfig = (req, res) => {
+const resetCacheConfig = async (req, res) => {
   try{
+    const securityLevel = await securityCtrl.getSecurityAccess('xmv-it-consulting', req.params.userId,req.params.userPSW);
+    if (securityLevel.status!==200){
+      return res.send(securityLevel);
+    } 
+
+    if (securityLevel.accessLevel!=='High' || securityLevel.accessLevel!=='Very High'){
+      return res.send({status:585,msg:"you don't have the permission to use this functionality"});
+    }
     var i=0;
     for (i=0; cacheConfig.has(i); i++){
       cacheConfig.set(i, "");
     }
 
-    return res.status(200).send({message:"cache for configuration (' + i ' records) is reset"});
+    return res.status(200).send({stattus:200,msg:"cache for configuration (' + i ' records) is reset"});
   }
   catch(err) {
-    return res.status(521).send({status:521, message:"FAILURE " + err.message});
+    return res.status(521).send({status:521, msg:"FAILURE " + err.message});
   }; 
 }
 
@@ -156,12 +165,12 @@ const findConfig = async  (req, res) => {
                   return res.send(data);
               })
               .catch(err => {
-                  return res.status(500).send({ message:err.message || "Some error occurred while retrieving config"});
+                  return res.status(500).send({ msg:err.message || "Some error occurred while retrieving config"});
               });
     }
   }
   catch(err) {
-    return res.status(521).send({status:521, message:"FAILURE " + err.message});
+    return res.status(521).send({status:521, msg:"FAILURE " + err.message});
   }; 
 
 }
@@ -183,15 +192,15 @@ const findConfigBytring = async (req, res) => {
                   return res.send(data);
               })
               .catch(err => {
-                  return res.status(500).send({ message:err.message || "Some error occurred while retrieving config"});
+                  return res.status(500).send({ msg:err.message || "Some error occurred while retrieving config"});
               });
       } else {
-        return res.status(530).send({ message:"At least one search parameter (string and/or field) is invalid ", status:530});
+        return res.status(530).send({ msg:"At least one search parameter (string and/or field) is invalid ", status:530});
       }
       
     }
     catch(err) {
-      return res.status(521).send({status:521, message:"FAILURE " + err.message});
+      return res.status(521).send({status:521, msg:"FAILURE " + err.message});
     }; 
 
 }
@@ -199,13 +208,18 @@ const findConfigBytring = async (req, res) => {
 // Update configServer by the id in the request
 const updateConfig = async (req, res) => {
   try{
+    const securityLevel= await securityCtrl.getSecurityAccess('xmv-it-consulting', req.params.userId,req.params.userPSW);
+    if (securityLevel.status!==200){
+      return res.send(securityLevel);
+    } 
 
+    if (securityLevel.accessLevel!=='Very High'){
+      return res.send({status:585,msg:"you don't have the permission to use this functionality"});
+    }
   await accessMongo.accessMongo(CONFIG, req.params.db);
 
   if (!req.body) {
-      return res.status(400).send({
-        message: "record is empty; cannot be updated"
-      });
+      return res.status(400).send({status:400, msg: "record is empty; cannot be updated"});
     }
     const id = req.params.id;
     CONFIG.findByIdAndUpdate(id, req.body, { useFindAndModify: false })
@@ -213,40 +227,46 @@ const updateConfig = async (req, res) => {
 
         if (!data) {
           return res.status(220).send({
-            message: `Cannot update Config record with id=${id}. Maybe Config record was not found!`, status:220
+            msg: `Cannot update Config record with id=${id}. Maybe Config record was not found!`, status:220
           });
-        } else return res.send({ message: "Config record was updated successfully." ,status:200});
+        } else return res.send({ msg: "Config record was updated successfully." ,status:200});
       })
       .catch(err => {
      
               return res.status(520).send({
-                message: "Error updating Config record with id=" + id,status:520 });
+                msg:"Error updating Config record with id=" + id,status:520 });
       });
     }
     catch(err) {
-      return res.status(521).send({status:521, message:"FAILURE " + err.message});
+      return res.status(521).send({status:521, msg:"FAILURE " + err.message});
     };
 };
 
 // Save config
 const uploadConfig = async (req, res) => {
 try{
+  const securityLevel= await securityCtrl.getSecurityAccess('xmv-it-consulting', req.params.userId,req.params.userPSW);
+  if (securityLevel.status!==200){
+    return res.send(securityLevel);
+  } 
 
+  if (securityLevel.accessLevel!=='Very High'){
+    return res.send({status:585,msg:"you don't have the permission to use this functionality"});
+  }
   await accessMongo.accessMongo(CONFIG, req.params.db);
   var configData=new CONFIG(req.body);
   configData.save()
     .then(data => {
-      return res.status(200).send(data);
+      return res.status(200).send({status:200, data:data});
       })
     .catch(err => {
-        return res.status(500).send({
-            message:
-            err.message || "Config record cannot be updated"
+        return res.status(500).send({status:500, 
+            msg: "Config record cannot be updated" + err
           });
       });
     }
     catch(err) {
-      return res.status(521).send({status:521, message:"FAILURE " + err.message});
+      return res.status(521).send({status:521, msg:"FAILURE " + err.message});
     };
 }
 
@@ -264,7 +284,7 @@ const getAllConfig  =  async (req, res) => {
           return res.send(data);
         })
       .catch(err => {
-          return res.status(510).send({status:510, message:err.message + "  error occurred while retrieving all records"});
+          return res.status(510).send({status:510, msg:err.message + "  error occurred while retrieving all records"});
         });
     /*
     try{
@@ -273,35 +293,43 @@ const getAllConfig  =  async (req, res) => {
         return res.send(record);
     }
     catch (err) {
-        return res.status(500).send({ message:err.message || "Some error occurred while retrieving config"});
+        return res.status(500).send({ msg:err.message || "Some error occurred while retrieving config"});
             };
     */
     }
   catch(err) {
-    return res.status(521).send({status:521, message:"FAILURE " + err.message});
+    return res.status(521).send({status:521, msg:"FAILURE " + err.message});
   };
 }
 
 // Delete a record with the specified id in the request
 const delConfigById = async (req, res) => {
   try{
+    const securityLevel= await securityCtrl.getSecurityAccess('xmv-it-consulting', req.params.userId,req.params.userPSW);
+    if (securityLevel.status!==200){
+      return res.send(securityLevel);
+    } 
+
+    if (securityLevel.accessLevel!=='Very High'){
+      return res.send({status:585,msg:"you don't have the permission to use this functionality"});
+    }
     await accessMongo.accessMongo(CONFIG, req.params.db);
     const id = req.params.id;
     const resp = await CONFIG.findByIdAndRemove(id);
     try {
         if (!resp) {
-          return res.status(220).send({status:220, message:"Cannot find record with id=" + id});
+          return res.status(220).send({status:220, msg:"Cannot find record with id=" + id});
         } else {
-          return res.send({message:'successful deletion of record id ' + id, status:200});
+          return res.send({msg:'successful deletion of record id ' + id, status:200});
         }
       }
     catch(err) {
-          return res.status(510).send({status:510, message:"Could not delete record with id=" + id});
+          return res.status(510).send({status:510, msg:"Could not delete record with id=" + id});
       
       };
     }
     catch(err) {
-        return res.status(521).send({status:521, message:"FAILURE " + err.message});
+        return res.status(521).send({status:521, msg:"FAILURE " + err.message});
     };  
 };
 

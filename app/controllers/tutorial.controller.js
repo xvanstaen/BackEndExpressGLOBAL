@@ -20,14 +20,17 @@ const usrPSW = dbUsr.usrPSW;
 const accessMongo = require("./accessMongo.js"); 
 const configFn = require("./config.controller.js");
 const cacheConsole = require("./cacheConsole.js");
+const securityCtrl = require("./securityCtrl.js");
 
+var securityLevel="";
 
 /* ================ */
 
-async function accessDB(dbName,collection,body){
+async function accessDB(dbName,collection,body, userId,userPSW){
   var record='';
   var error = 0;
   var theCollection="";
+
   if (dbName!==''){
     current_dbName=dbName;
   } else {
@@ -76,16 +79,32 @@ const save = async (req, res) => {
   } else {
     return res.status(520).send({status:520, message:"Data base field is empty"});
   }
+
+  securityLevel= await securityCtrl.getSecurityAccess('xmv-it-consulting',req.params.userId, req.params.userPSW);
+  if (securityLevel.status!==200){
+    return res.send(securityLevel);
+  } 
+  
+  
   if (req.params.collection === Tutorial.collection.name){
     await accessMongo.accessMongo(Tutorial, current_dbName);
     record=new Tutorial(req.body);
   } else if (req.params.collection === fileSystem.collection.name){
+    if (securityLevel.accessLevel!=='High' || securityLevel.accessLevel!=='Very High'){
+      return res.send({status:585,msg:"you don't have the permission to use this functionality"});
+    }
     await accessMongo.accessMongo(fileSystem, current_dbName);
     record=new fileSystem(req.body);
   } else if (req.params.collection === usrPSW.collection.name){
+    if (securityLevel.accessLevel!=='Very High'){
+      return res.send({status:585,msg:"you don't have the permission to use this functionality"});
+    }
     record=new usrPSW(req.body);
     await accessMongo.accessMongo(usrPSW, current_dbName);
   } else {
+    if (securityLevel.accessLevel!=='Very High'){
+      return res.send({status:585,msg:"you don't have the permission to use this functionality"});
+    }
     const theConfig=configFn.getConfigDB();
     if (req.params.collection === theConfig.theDB.collection.name){
       await accessMongo.accessMongo(theConfig.theDB, theConfig.dbName);
@@ -112,6 +131,20 @@ const save = async (req, res) => {
 
 // Update a record 
 const update = async (req, res) => {
+    securityLevel= await securityCtrl.getSecurityAccess('xmv-it-consulting',req.params.userId, req.params.userPSW);
+    if (securityLevel.status!==200){
+      return res.send(securityLevel);
+    } 
+    const theConfig=configFn.getConfigDB();
+    if ((req.params.collection === usrPSW.collection.name || req.params.collection === theConfig.theDB.collection.name)
+        && securityLevel.accessLevel!=='Very High'){
+          return res.send({status:585,msg:"you don't have the permission to use this functionality"});
+    }
+    if (req.params.collection === usrFS.collection.name 
+      && (securityLevel.accessLevel!=='Very High' && securityLevel.accessLevel!=='High')){
+        return res.send({status:585,msg:"you don't have the permission to use this functionality"});
+  }
+
     //accessMongo.accessMongo(Tutorial, req.query.db);
     const theValue= await accessDB(req.params.db,req.params.collection,"");
     //accessMongo.accessMongo(Tutorial, req.query.db);
@@ -143,6 +176,19 @@ const update = async (req, res) => {
 
 // Delete a record with the specified id in the request
 const deleteById = async (req, res) => {
+  securityLevel= await securityCtrl.getSecurityAccess('xmv-it-consulting',req.params.userId, req.params.userPSW);
+  if (securityLevel.status!==200){
+    return res.send(securityLevel);
+  } 
+  const theConfig=configFn.getConfigDB();
+  if ((req.params.collection === usrPSW.collection.name || req.params.collection === theConfig.theDB.collection.name)
+      && securityLevel.accessLevel!=='Very High'){
+        return res.send({status:585,msg:"you don't have the permission to use this functionality"});
+  }
+  if (req.params.collection === usrFS.collection.name 
+    && (securityLevel.accessLevel!=='Very High' && securityLevel.accessLevel!=='High')){
+      return res.send({status:585,msg:"you don't have the permission to use this functionality"});
+}
   const theValue=await accessDB(req.params.db,req.params.collection,"");
   //accessMongo.accessMongo(Tutorial, req.query.db);
   if (theValue.message!==undefined){
@@ -174,6 +220,19 @@ const deleteById = async (req, res) => {
 
 // Delete a record based on a condition
 const deleteByString = async (req, res) => {
+  securityLevel= await securityCtrl.getSecurityAccess('xmv-it-consulting',req.params.userId, req.params.userPSW);
+  if (securityLevel.status!==200){
+    return res.send(securityLevel);
+  } 
+  const theConfig=configFn.getConfigDB();
+  if ((req.params.collection === usrPSW.collection.name || req.params.collection === theConfig.theDB.collection.name)
+      && securityLevel.accessLevel!=='Very High'){
+        return res.send({status:585,msg:"you don't have the permission to use this functionality"});
+  }
+  if (req.params.collection === usrFS.collection.name 
+    && (securityLevel.accessLevel!=='Very High' && securityLevel.accessLevel!=='High')){
+      return res.send({status:585,msg:"you don't have the permission to use this functionality"});
+}
   const theValue=await accessDB(req.params.db,req.params.collection,"");
   //accessMongo.accessMongo(Tutorial, req.query.db);
   if (theValue.message!==undefined){
@@ -206,6 +265,19 @@ const deleteByString = async (req, res) => {
 }; 
 // Delete all records in a given collection
 const deleteAll = async (req, res) => {
+  securityLevel= await securityCtrl.getSecurityAccess('xmv-it-consulting',req.params.userId, req.params.userPSW);
+  if (securityLevel.status!==200){
+    return res.send(securityLevel);
+  } 
+  const theConfig=configFn.getConfigDB();
+  if ((req.params.collection === usrPSW.collection.name || req.params.collection === theConfig.theDB.collection.name)
+      && securityLevel.accessLevel!=='Very High'){
+        return res.send({status:585,msg:"you don't have the permission to use this functionality"});
+  }
+  if (req.params.collection === usrFS.collection.name 
+      && (securityLevel.accessLevel!=='Very High' && securityLevel.accessLevel!=='High')){
+        return res.send({status:585,msg:"you don't have the permission to use this functionality"});
+  }
   const theValue=await accessDB(req.params.db,req.params.collection,"");
   //accessMongo.accessMongo(Tutorial, req.query.db);
   if (theValue.message!==undefined){
@@ -238,6 +310,11 @@ const findById = async (req, res) => {
   if  (theValue.error!==0){
     return res.status(540).send({status:540, message:'collection ' + req.params.collection + ' is invalid'});
   }
+ 
+  if (req.params.collection === usrPSW.collection.name && securityLevel.accessLevel!=='Very High'){
+        return res.send({status:585,msg:"you don't have the permission to use this functionality"});
+  }
+
   const id = req.params.id;
 
   try{
@@ -270,7 +347,10 @@ const findAll = async (req, res) => {
   if  (theValue.error!==0){
     return res.status(540).send({status:540, message:'collection ' + req.params.collection + ' is invalid'});
   }
-  
+  if (req.params.collection === usrPSW.collection.name && securityLevel.accessLevel!=='Very High'){
+    return res.send({status:585,msg:"you don't have the permission to use this functionality"});
+  }
+
   try{
     theValue.col.find() // { published: true }
       .then(data => {
@@ -295,6 +375,9 @@ const findByCriteria = async (req, res) => {
   }
   if  (theValue.error!==0){
     return res.status(540).send({status:540, message:'collection ' + req.params.collection + ' is invalid'});
+  }
+  if (req.params.collection === usrPSW.collection.name && securityLevel.accessLevel!=='Very High'){
+    return res.send({status:585,msg:"you don't have the permission to use this functionality"});
   }
 
   var searchString = req.query.searchString;

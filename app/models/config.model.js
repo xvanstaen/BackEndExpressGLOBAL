@@ -34,6 +34,11 @@
           bucket:String,
           file:String,
           },
+        userLogin:{
+          id:String,
+          psw:String,
+          accessLevel:String,
+          }
       },
       { timestamps: true }
     );

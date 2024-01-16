@@ -1,74 +1,61 @@
 
 const { MAX_RETRY_DEFAULT } = require("@google-cloud/storage/build/src/storage");
 const CryptoJS = require ('crypto-js');
-const fileController = require("./file.controller");
+//const fileController = require("./file.controller");
+//const securityCtrl = require("./securityCtrl.js");
 const authFn = require("./authFn");
 const nodecache = require('node-cache');
 var cache = new nodecache;
 var bucketCrypto='xmv-cryptodata';
-var bucketLogin='manage-login';
+//var bucketLogin='manage-login';
 
 const  encryptFn = async (req, res) => {
+  
     try {
+      const securityLevel= await securityCtrl.getSecurityAccess(req.params.userId,req.params.userPSW);
+      if (securityLevel.status!==200){
+        return res.send(securityLevel);
+      } 
+      if (securityLevel.accessLevel!=='Very High'){
+        return res.send({status:585,msg:"you don't have the permission to use this functionality"});
+      }
       const cryptAuth = JSON.parse(req.params.inAuth);
       if (cryptAuth.userId !== undefined && cryptAuth.psw !== undefined && cryptAuth.crypto !== undefined){
           if (cryptAuth.crypto === true){  
             const encrypt = await getEncrypt(req.params.inData, req.params.inKey, req.params.inMethod, 0, req.params.projectId) ;
-            res.send({response:encrypt});
-            /*
-            const storage = await authFn.getClient(projectId);
-            var bucket = storage.bucket(bucketLogin);
-            bucket.projectId=projectId;
-          
-            const [downloadFile] = await bucket.file(userId+'PSW.json').download();
-            const decrypt = await getDecrypt(JSON.parse(downloadFile).psw , JSON.parse(downloadFile).key, JSON.parse(downloadFile).method ,0, projectId)
-           
-              if (decrypt === "Key invalid" || decrypt !== cryptAuth.psw){
-                    res.status(701).send({error:"invalid request"});
-              } else {
-                const encrypt = await getEncrypt(req.params.inData, req.params.inKey, req.params.inMethod, 0, req.params.projectId) ;
-                res.send({response:encrypt});
-              } 
-              */
-          } else {
-            res.status(702).send({error:"invalid encrypt request"});
-          }
-      } else {
-          res.status(702).send({error:"invalid encrypt request"});
-        }
+            return res.send({response:encrypt});
+          } 
+          return res.status(702).send({error:"invalid encrypt request"});
+      } 
+      return res.status(702).send({error:"invalid encrypt request"});  
     }
     catch (err){
-      res.status(700).send({msg:'pb with  coding of encryptFn', error:err});
+      return res.status(700).send({msg:'pb with  coding of encryptFn', error:err});
     }
   }
   
   const  decryptFn = async (req, res) => {
     try {
+      const securityLevel= await securityCtrl.getSecurityAccess(req.params.userId,req.params.userPSW);
+      if (securityLevel.status!==200){
+        return res.send(securityLevel);
+      } 
+      if (securityLevel.accessLevel!=='Very High'){
+        return res.send({status:585,msg:"you don't have the permission to use this functionality"});
+      }
       const cryptAuth = JSON.parse(req.params.inAuth);
       if (cryptAuth.userId !== undefined && cryptAuth.psw !== undefined && cryptAuth.crypto !== undefined){
         if (cryptAuth.crypto === true){  
             const decrypt = await getDecrypt(req.params.inData, req.params.inKey, req.params.inMethod, 0, req.params.projectId);
-            res.send({response:decrypt});
-            /*
-            //const [downloadFile] = await bucket.file(cryptAuth.userId+'PSW.json').download();
-            //const myEncrypt = await getDecrypt(JSON.parse(downloadFile).psw , JSON.parse(downloadFile).key, JSON.parse(downloadFile).method ,0, projectId)
-            const myEncrypt = await getDecrypt(cryptAuth.psw  , cryptAuth.key , JSON.parse(downloadFile).method ,0, projectId)
-            if (myEncrypt === "Key invalid" || myEncrypt !== cryptAuth.psw){
-                  res.status(701).send({error:"invalid request"});
-            } else {
-              const decrypt = await getDecrypt(req.params.inData, req.params.inKey, req.params.inMethod, 0, req.params.projectId);
-              res.send({response:decrypt});
-            }
-            */
-        } else {
-            res.status(702).send({error:"invalid decrypt request"});
-        }
-      } else {
-          res.status(702).send({error:"invalid decrypt request"});
-      }
+            return res.send({response:decrypt});
+
+        } 
+        return res.status(702).send({error:"invalid decrypt request"});
+      } 
+      return res.status(702).send({error:"invalid decrypt request"});
       }
       catch (err){
-        res.status(700).send({msg:'pb with coding of decryptFn', error:err});
+        return res.status(700).send({msg:'pb with coding of decryptFn', error:err});
       }
   }
   
