@@ -46,7 +46,7 @@ async function  enableUniformBucketLevelAccess(bucketName, storage) {
 
 const getMedialinkContent = async (req, res) => {
   try{
-    if (bucket.name === bucketCrypto || bucket.name === bucketLogin){
+    if (req.query.bucket === bucketCrypto || req.query.bucket === bucketLogin){
       const securityLevel= await securityCtrl.getSecurityAccess(req.params.projectId, req.params.userId,req.params.userPSW);
       if (securityLevel.status!==200){
         return res.send(securityLevel);
@@ -107,7 +107,7 @@ const getTextFile= async (req, res) => {
 
 const getFileContent = async (req, res) => {
   try {
-    if (bucket.name === bucketCrypto || bucket.name === bucketLogin){
+    if (req.query.bucket === bucketCrypto || req.query.bucket === bucketLogin){
       const securityLevel= await securityCtrl.getSecurityAccess(req.params.projectId, req.params.userId,req.params.userPSW);
       if (securityLevel.status!==200){
         return res.send(securityLevel);
@@ -186,7 +186,7 @@ const  checkLogin = async (req, res) => {
 const upload =async (req, res) => {
     //console.log(' ===> upload');
   try {
-      if (bucket.name === bucketCrypto || bucket.name === bucketLogin){
+      if (req.query.bucket === bucketCrypto || req.query.bucket === bucketLogin){
         const securityLevel= await securityCtrl.getSecurityAccess(req.params.projectId, req.params.userId,req.params.userPSW);
         if (securityLevel.status!==200){
           return res.send(securityLevel);
