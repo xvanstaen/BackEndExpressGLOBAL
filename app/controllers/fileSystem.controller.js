@@ -68,10 +68,12 @@ const onFileSystem = async (req, res) => {
           myFileSystem[i].userServerId === tabLock[req.params.iWait].userServerId && 
           myFileSystem[i].credentialDate === tabLock[req.params.iWait].credentialDate  ){
       */
-        cacheConsole.fillCacheConsole("credentials.creationDate=",credentials.creationDate);
+        cacheConsole.fillCacheConsole("credentials.creationDate="+credentials.creationDate,"");
         tabLock[req.params.iWait].credentialDate=credentials.creationDate;
         const theValue=await authFn.fnGetNewServerUsrId(req.params.projectId);
+        cacheConsole.fillCacheConsole("theValue="+ JSON.stringify(theValue), theValue);
         tabLock[req.params.iWait].userServerId=theValue.credentials.userServerId;
+        cacheConsole.fillCacheConsole("theValue.userServerId="+ theValue.credentials.userServerId, "");
         resetInUseFileSystem(tabLock[req.params.iWait]); // ensure that corresponding memory data is released
         // last update was performed by same user or timeout occured for the other user
         if (myFileSystem.length>0){
@@ -259,7 +261,8 @@ const onFileSystem = async (req, res) => {
       }
     }
   catch (err) {
-    cacheConsole.fillCacheConsole('err: tabLock='+req.params.tabLock + ' error= ', JSON.stringify(err));
+    cacheConsole.fillCacheConsole('err: tabLock='+req.params.tabLock + ' error= ', err);
+    cacheConsole.fillCacheConsole('err: '+err + ' JSON(error)= ', JSON.stringify(err));
     const tabLock=JSON.parse(req.params.tabLock);
     if (tabLock[0].action==='onDestroy'){
       for (var iWait=0; iWait<tabLock.length; iWait++){
