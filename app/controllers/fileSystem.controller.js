@@ -40,6 +40,7 @@ const onFileSystem = async (req, res) => {
     // check if the retrieved credentials are the same as those provided by the application for this user; if not then download File System from Cloud Storage 
     if (credentials.userServerId===undefined || tabLock[req.params.iWait].credentialDate !== credentials.creationDate){
       // retrieve the File System -> objectName refers to the functionality that is locked 
+      cacheConsole.fillCacheConsole("credentials are different","");
       myFileSystem = await getFileSystem(req.query.bucket, req.params.projectId, tabLock[req.params.iWait].objectName);
       if (myFileSystem.length>0){
           for (var i=0; i< myFileSystem.length && ( myFileSystem[i].object!==tabLock[req.params.iWait].object ||  myFileSystem[i].bucket!==tabLock[req.params.iWait].bucket); i++){}
@@ -67,7 +68,7 @@ const onFileSystem = async (req, res) => {
           myFileSystem[i].userServerId === tabLock[req.params.iWait].userServerId && 
           myFileSystem[i].credentialDate === tabLock[req.params.iWait].credentialDate  ){
       */
-
+        cacheConsole.fillCacheConsole("credentials.creationDate=",credentials.creationDate);
         tabLock[req.params.iWait].credentialDate=credentials.creationDate;
         const theValue=await authFn.fnGetNewServerUsrId(req.params.projectId);
         tabLock[req.params.iWait].userServerId=theValue.credentials.userServerId;
@@ -94,7 +95,7 @@ const onFileSystem = async (req, res) => {
       ***/
     }
 
-    
+    cacheConsole.fillCacheConsole('===> in updateFileSystem() for user ',JSON.stringify(tabLock[req.params.iWait]));
     console.log('===> in updateFileSystem() for user ' + JSON.stringify(tabLock[req.params.iWait]) );
     console.log('lockFileSystem='+JSON.stringify(lockFileSystem));
     if (tabLock[0].action!=='onDestroy'){
@@ -219,9 +220,9 @@ const onFileSystem = async (req, res) => {
             }
           // const [fileData] = await bucketFileSystem.file(tabLock[req.params.iWait].objectName).download();
           // const myFileSystem = await getFileSystem(req.query.bucket, req.params.projectId, tabLock[req.params.iWait].objectName)
-                    
+          cacheConsole.fillCacheConsole('call checkData');
           theStatus =checkData(myFileSystem, req.params.iWait, tabLock, credentials.creationDate);
-
+          cacheConsole.fillCacheConsole('theStatus=', theStatus);
           if (theStatus.theFile !== undefined){
              
               if (theStatus.record !== undefined && tabLock[req.params.iWait].action==='lock' || tabLock[req.params.iWait].action==='check&update' || tabLock[req.params.iWait].action==='updatedAt'){
@@ -258,6 +259,7 @@ const onFileSystem = async (req, res) => {
       }
     }
   catch (err) {
+    cacheConsole.fillCacheConsole('err: tabLock='+req.params.tabLock + ' error= ', JSON.stringify(err));
     const tabLock=JSON.parse(req.params.tabLock);
     if (tabLock[0].action==='onDestroy'){
       for (var iWait=0; iWait<tabLock.length; iWait++){
@@ -267,9 +269,9 @@ const onFileSystem = async (req, res) => {
         } 
       }
     }
-        console.log('global failure for user ' + tabLock[req.params.iWait].userServerId + '  error==>' + err);
-        resetInUseFileSystem(tabLock[req.params.iWait]);
-        return res.send({message:"global failure for user " + tabLock[req.params.iWait].userServerId, status:999}); 
+    console.log('global failure for user ' + tabLock[req.params.iWait].userServerId + '  error==>' + err);
+    resetInUseFileSystem(tabLock[req.params.iWait]);
+    return res.send({message:"global failure for user " + tabLock[req.params.iWait].userServerId, status:999}); 
   /*  } */
   } 
 };
