@@ -39,13 +39,13 @@ const onFileSystem = async (req, res) => {
         credentialCache.set(0,theValue.credentials);
         credentials=theValue.credentials;
       } else {
-
+        return res.send(theValue);
       }
     }
     // check if the retrieved credentials are the same as those provided by the application for this user; if not then download File System from Cloud Storage 
     if (credentials.userServerId===undefined || tabLock[req.params.iWait].credentialDate !== credentials.creationDate){
       // retrieve the File System -> objectName refers to the functionality that is locked 
-      cacheConsole.fillCacheConsole("credentials are different, tabLock[req.params.iWait].credentialDate="+tabLock[req.params.iWait].credentialDate,"credentials.creationDate="+credentials.creationDate);
+      //cacheConsole.fillCacheConsole("credentials are different, tabLock[req.params.iWait].credentialDate="+tabLock[req.params.iWait].credentialDate,"credentials.creationDate="+credentials.creationDate);
       myFileSystem = await getFileSystem(req.query.bucket, req.params.projectId, tabLock[req.params.iWait].objectName);
       if (myFileSystem.length>0){
           for (var i=0; i< myFileSystem.length && ( myFileSystem[i].object!==tabLock[req.params.iWait].object ||  myFileSystem[i].bucket!==tabLock[req.params.iWait].bucket); i++){}
@@ -64,7 +64,7 @@ const onFileSystem = async (req, res) => {
             }
             theMsg='File System: server was reset, file was locked by another user but timeout occured;';
             console.log(theMsg);
-            const theCode=cacheConsole.fillCacheConsole(theMsg,{updatedAt:myFileSystem[i].updatedAt,timeOut:timeOutValue,currentTime:currentTime});
+            cacheConsole.fillCacheConsole(theMsg,{updatedAt:myFileSystem[i].updatedAt,timeOut:timeOutValue,currentTime:currentTime});
           } 
       }
       /*
@@ -79,6 +79,7 @@ const onFileSystem = async (req, res) => {
 
         if (theValue.status===700){
           cacheConsole.fillCacheConsole("theValue.status="+ theValue.status, theValue.err);
+          return res.send(theValue);
         }
         
         tabLock[req.params.iWait].userServerId=theValue.credentials.userServerId;
