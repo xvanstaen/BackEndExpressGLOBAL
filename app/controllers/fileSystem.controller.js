@@ -30,17 +30,22 @@ const onFileSystem = async (req, res) => {
 
     if ( credentialCache.has(0)){ // retrieve credentials values in memory
         credentials=credentialCache.get(0);
-    } else { // if no credentials in memory then generate get them
+    } else { // if no credentials in memory then get them
       const theValue = await authFn.getDefaultCredentials(req.params.projectId);
+      if (theValue.status===700){
+        cacheConsole.fillCacheConsole("theValue.status="+ theValue.status, theValue.err);
+      }
       if (theValue.status === 200){
         credentialCache.set(0,theValue.credentials);
         credentials=theValue.credentials;
-      } 
+      } else {
+
+      }
     }
     // check if the retrieved credentials are the same as those provided by the application for this user; if not then download File System from Cloud Storage 
     if (credentials.userServerId===undefined || tabLock[req.params.iWait].credentialDate !== credentials.creationDate){
       // retrieve the File System -> objectName refers to the functionality that is locked 
-      cacheConsole.fillCacheConsole("credentials are different","");
+      cacheConsole.fillCacheConsole("credentials are different, tabLock[req.params.iWait].credentialDate="+tabLock[req.params.iWait].credentialDate,"credentials.creationDate="+credentials.creationDate);
       myFileSystem = await getFileSystem(req.query.bucket, req.params.projectId, tabLock[req.params.iWait].objectName);
       if (myFileSystem.length>0){
           for (var i=0; i< myFileSystem.length && ( myFileSystem[i].object!==tabLock[req.params.iWait].object ||  myFileSystem[i].bucket!==tabLock[req.params.iWait].bucket); i++){}
@@ -71,7 +76,11 @@ const onFileSystem = async (req, res) => {
         cacheConsole.fillCacheConsole("credentials.creationDate="+credentials.creationDate,"");
         tabLock[req.params.iWait].credentialDate=credentials.creationDate;
         const theValue=await authFn.fnGetNewServerUsrId(req.params.projectId);
-        cacheConsole.fillCacheConsole("theValue="+ JSON.stringify(theValue), theValue);
+
+        if (theValue.status===700){
+          cacheConsole.fillCacheConsole("theValue.status="+ theValue.status, theValue.err);
+        }
+        
         tabLock[req.params.iWait].userServerId=theValue.credentials.userServerId;
         cacheConsole.fillCacheConsole("theValue.userServerId="+ theValue.credentials.userServerId, "");
         resetInUseFileSystem(tabLock[req.params.iWait]); // ensure that corresponding memory data is released
