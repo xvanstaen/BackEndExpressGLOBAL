@@ -8,7 +8,10 @@ function fillCacheConsole(theMsg, content){
     var theTab=[];
     if (cacheConsole.has(0)){
         const tabRecord={theDate:"", msg:"", content:""}
-        theTab = cacheConsole.get(0);
+        const tempTab = cacheConsole.get(0);
+        if (tempTab.length<100){ // maximum 100 records
+          theTab=cacheConsole.get(0);
+        }
         theTab.push(tabRecord);
         theTab[theTab.length-1].theDate=stdFunctions.defineMyDate();
         theTab[theTab.length-1].content=content;

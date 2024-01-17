@@ -32,7 +32,7 @@ const onFileSystem = async (req, res) => {
         credentials=credentialCache.get(0);
     } else { // if no credentials in memory then get them
       const theValue = await authFn.getDefaultCredentials(req.params.projectId);
-      if (theValue.status===700){
+      if (theValue.status===712){
         cacheConsole.fillCacheConsole("theValue.status="+ theValue.status, theValue.err);
       }
       if (theValue.status === 200){
@@ -77,7 +77,7 @@ const onFileSystem = async (req, res) => {
         tabLock[req.params.iWait].credentialDate=credentials.creationDate;
         const theValue=await authFn.fnGetNewServerUsrId(req.params.projectId);
 
-        if (theValue.status===700){
+        if (theValue.status===712){
           cacheConsole.fillCacheConsole("theValue.status="+ theValue.status, theValue.err);
           return res.send(theValue);
         }
