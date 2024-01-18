@@ -9,7 +9,8 @@ var bucketLogin='manage-login';
 async function getSecurityAccess(projectId, userId, PSW){
     try {
       const myDecrypt = await getUserPswRecord(projectId, userId );
-      if (myDecrypt.data === "Key invalid" || myDecrypt.data !== PSW){
+      const thePSW = await cryptoFn.getDecryptAll(PSW, 1, 'AES', 0, projectId)
+      if (myDecrypt.data === "Key invalid" || myDecrypt.data !== thePSW){
         return ({msg:"invalid id/psw", status:580});
       } 
       return ({status:200,accessLevel:myDecrypt.securityLevel})

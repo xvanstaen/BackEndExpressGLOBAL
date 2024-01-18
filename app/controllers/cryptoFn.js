@@ -191,7 +191,7 @@ const  decryptFnAll = async (req, res) => {
 
 async function getDecryptAll(Encrypt, key, method, i_theFour, projectId){
   
-    if ( cacheAll.has(0)){
+      if ( cacheAll.has(0)){
       var myCrypto=cacheAll.get(0);
     } else {
           const storage = await authFn.getClient(projectId);

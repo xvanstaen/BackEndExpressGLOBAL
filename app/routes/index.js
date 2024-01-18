@@ -45,7 +45,7 @@ let routes = (app) => {
   router.get("/decryptFn/:userId/:userPSW/:projectId/:testProd/:inData/:inKey/:inMethod/:inAuth", cryptoFn.decryptFn);
 
   router.get("/encryptAllFn/:projectId/:testProd/:inData/:inKey/:inMethod/:inAuth", cryptoFn.encryptFnAll);
-  router.get("/decryptAllFn/:projectId/:testProd/:inData/:inKey/:inMethod/:inAuth", cryptoFn.decryptFn);
+  router.get("/decryptAllFn/:projectId/:testProd/:inData/:inKey/:inMethod/:inAuth", cryptoFn.decryptFnAll);
 
   router.get("/requestDefaultCredentials/:projectId/:testProd", authFn.requestDefaultCredentials);
   router.get("/requestTokenOAuth2/:projectId/:testProd", authFn.requestTokenOAuth2);
