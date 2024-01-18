@@ -21,6 +21,22 @@ var fileSystemCache = new nodecache;
 
 var lockFileSystem=[];
 
+function initCacheCredentialsFS(){
+  var credentials={date:"", userServerId:0};
+  credentials.date = stdFunctions.defineMyDate();
+  //credentials.userServerId = 0;
+  credentialCache.set(0,credentials);
+  return({status:200, credentials:credentials})
+}
+
+function getNewFSUserId(){
+  var credentials={date:"", userServerId:0};
+  credentials=credentialCache.get(0);
+  credentials.userServerId++;
+  credentialCache.set(0,credentials);
+  return({status:200, credentials:credentials})
+}
+
 const onFileSystem = async (req, res) => {
   var credentials='';
   var myFileSystem=[];
@@ -31,6 +47,9 @@ const onFileSystem = async (req, res) => {
     if ( credentialCache.has(0)){ // retrieve credentials values in memory
         credentials=credentialCache.get(0);
     } else { // if no credentials in memory then get them
+      const theValue = initCacheCredentialsFS();
+      credentials=theValue.credentials;
+      /**
       const theValue = await authFn.getDefaultCredentials(req.params.projectId);
       if (theValue.status===712){
         cacheConsole.fillCacheConsole("theValue.status="+ theValue.status, theValue.err);
@@ -41,6 +60,7 @@ const onFileSystem = async (req, res) => {
       } else {
         return res.send(theValue);
       }
+       */
     }
     // check if the retrieved credentials are the same as those provided by the application for this user; if not then download File System from Cloud Storage 
     if (credentials.userServerId===undefined || tabLock[req.params.iWait].credentialDate !== credentials.creationDate){
@@ -75,13 +95,15 @@ const onFileSystem = async (req, res) => {
       */
         cacheConsole.fillCacheConsole("credentials.creationDate="+credentials.creationDate,"");
         tabLock[req.params.iWait].credentialDate=credentials.creationDate;
+        const theValue=getNewFSUserId();
+        /**
         const theValue=await authFn.fnGetNewServerUsrId(req.params.projectId);
 
         if (theValue.status===712){
           cacheConsole.fillCacheConsole("theValue.status="+ theValue.status, theValue.err);
           return res.send(theValue);
         }
-        
+        */
         tabLock[req.params.iWait].userServerId=theValue.credentials.userServerId;
         cacheConsole.fillCacheConsole("theValue.userServerId="+ theValue.credentials.userServerId, "");
         resetInUseFileSystem(tabLock[req.params.iWait]); // ensure that corresponding memory data is released
@@ -173,13 +195,13 @@ const onFileSystem = async (req, res) => {
                 }
                 if (code===200){
                   console.log('status = 200' + tabLock[req.params.iWait].action + " is completed for user " + tabLock[req.params.iWait].userServerId);
-                  //return res.send({tabLock:tabLock, message: tabLock[req.params.iWait].action + " is completed for user " + tabLock[req.params.iWait].userServerId, status:200});
+                  //return res.send({tabLock:tabLock, msg: tabLock[req.params.iWait].action + " is completed for user " + tabLock[req.params.iWait].userServerId, status:200});
                 } else if (code===201){
                   console.log('status = 201' + tabLock[req.params.iWait].action + " is completed without metadata for user " + tabLock[req.params.iWait].userServerId);
-                  //return res.send({tabLock:tabLock, message: tabLock[req.params.iWait].action + " is completed without metadata for user " + tabLock[req.params.iWait].userServerId, status:200});
+                  //return res.send({tabLock:tabLock, msg: tabLock[req.params.iWait].action + " is completed without metadata for user " + tabLock[req.params.iWait].userServerId, status:200});
                 } else {
                   console.log('status = 997' + "after save is a failure for user " + tabLock[req.params.iWait].userServerId +  ' on action ' + tabLock[req.params.iWait].action);
-                  // return res.send({message:"after save is a failure for user " + tabLock[req.params.iWait].userServerId +  ' on action ' + tabLock[req.params.iWait].action, status:997});
+                  // return res.send({msg:"after save is a failure for user " + tabLock[req.params.iWait].userServerId +  ' on action ' + tabLock[req.params.iWait].action, status:997});
                 }
                 
 
@@ -198,7 +220,7 @@ const onFileSystem = async (req, res) => {
         }
 
         console.log('on Destroy is completed for userServerId ' +  tabLock[0].userServerId)
-        return res.send({message:"on Destroy is completed", status:999});
+        return res.send({msg:"on Destroy is completed", status:999});
       } // ============ end of onDestroy process
 
 
@@ -252,22 +274,22 @@ const onFileSystem = async (req, res) => {
                 tabInUse[req.params.iWait]===1;
               }
               if (code===200){
-                return res.send({tabLock:tabLock, message: tabLock[req.params.iWait].action + " is completed for user " + tabLock[req.params.iWait].userServerId, status:200});
+                return res.send({tabLock:tabLock, msg: tabLock[req.params.iWait].action + " is completed for user " + tabLock[req.params.iWait].userServerId, status:200});
               } else if (code===201){
-                return res.send({tabLock:tabLock, message: tabLock[req.params.iWait].action + " is completed without metadata for user " + tabLock[req.params.iWait].userServerId, status:200});
+                return res.send({tabLock:tabLock, msg: tabLock[req.params.iWait].action + " is completed without metadata for user " + tabLock[req.params.iWait].userServerId, status:200});
               } else {
-                return res.send({message:"after save is a failure for user " + tabLock[req.params.iWait].userServerId +  ' on action ' + tabLock[req.params.iWait].action, status:997});
+                return res.send({msg:"after save is a failure for user " + tabLock[req.params.iWait].userServerId +  ' on action ' + tabLock[req.params.iWait].action, status:997});
               }
 
         } else { // error code is returned
           resetInUseFileSystem(tabLock[req.params.iWait]);
           console.log("Code " + theStatus + '  returned for action = ' + tabLock[req.params.iWait].action + " for user " + tabLock[req.params.iWait].userServerId)
-          return res.send({message:"Code " + theStatus + '  returned for action = ' + tabLock[req.params.iWait].action + " for user " + tabLock[req.params.iWait].userServerId , status:theStatus});
+          return res.send({msg:"Code " + theStatus + '  returned for action = ' + tabLock[req.params.iWait].action + " for user " + tabLock[req.params.iWait].userServerId , status:theStatus});
         }
 
       } else {
           resetInUseFileSystem(tabLock[req.params.iWait]);
-          return res.send({message:"wrong action for user " + tabLock[req.params.iWait].userServerId, status:998});
+          return res.send({msg:"wrong action for user " + tabLock[req.params.iWait].userServerId, status:998});
       }
     }
   catch (err) {
@@ -284,7 +306,7 @@ const onFileSystem = async (req, res) => {
     }
     console.log('global failure for user ' + tabLock[req.params.iWait].userServerId + '  error==>' + err);
     resetInUseFileSystem(tabLock[req.params.iWait]);
-    return res.send({message:"global failure for user " + tabLock[req.params.iWait].userServerId, status:999}); 
+    return res.send({msg:"global failure for user " + tabLock[req.params.iWait].userServerId, status:999}); 
   /*  } */
   } 
 };
@@ -296,17 +318,17 @@ const getMemoryFS= async (req, res) => {
       return res.send(securityLevel);
     } 
 
-    if (securityLevel.accessLevel!=='High' || securityLevel.accessLevel!=='Very High'){
+    if (securityLevel.accessLevel!=='High' && securityLevel.accessLevel!=='Very High'){
       return res.send({status:220,msg:"you don't have the right level of security access"});
     }
     var tabFS=[];
     if (fileSystemCache.has(0)){
       tabFS = fileSystemCache.get(0);
     } 
-    return res.send({status:0, data:tabFS})
+    return res.send({status:200, data:tabFS})
   }
   catch (err){
-    return ({error:"System failure " + err, status:700});
+    return ({msg:"System failure " + err, status:700});
   }
 }
 
@@ -318,18 +340,18 @@ const resetFS= async (req, res) => {
       return res.send(securityLevel);
     } 
 
-    if (securityLevel.accessLevel!=='High' || securityLevel.accessLevel!=='Very High'){
+    if (securityLevel.accessLevel!=='High' && securityLevel.accessLevel!=='Very High'){
       return res.send({status:220,msg:"you don't have the right level of security access"});
     }
 
       // *** how to manage several records within one file system? Can it happen?
-      var tabLock=JSON.parse(req.params.tabLock);
-      var myFileSystem=[];
-      var tabFS=[];
-      var newTabFS=[];
-      var record=0;
+    var tabLock=JSON.parse(req.params.tabLock);
+    var myFileSystem=[];
+    var tabFS=[];
+    var newTabFS=[];
+    var record=0;
       // const inUse=inUseFileSystem(tabLock[req.params.iWait]);
-      if (fileSystemCache.has(0)){
+    if (fileSystemCache.has(0)){
         tabFS = fileSystemCache.get(0);
         for (record=0; record<tabFS.length && tabFS[record].fileName!==tabLock[req.params.iWait].objectName; record++){}
         if (record<tabFS.length) {
@@ -344,17 +366,17 @@ const resetFS= async (req, res) => {
             fileSystemCache.set(0,newTabFS);
           } 
         } 
-      if (tabLock[req.params.iWait].action==="resetAll"){
-          fileSystemCache.set(0,newTabFS);
-          const code = await saveFS(req.params.projectId, req.query.bucket,tabLock[req.params.iWait].objectName,JSON.stringify(myFileSystem),tabLock[req.params.iWait]);
-          if (code===200){
-                return res.status(200).send({status:200, msg:'file system ' + req.params.name + ' has been reset and file saved with metadata'});
-            } else if (code===201){
-                return res.status(201).send({status:201,msg:'file system ' + req.params.name + ' has been reset and file is saved but metaData not updated'});
-            } else {
-                return res.status(202).send({status:202,msg:'file system memory has been reset but file could not be saved'});
-            }
-      }
+    if (tabLock[req.params.iWait].action==="resetAll"){
+        fileSystemCache.set(0,newTabFS);
+        const code = await saveFS(req.params.projectId, req.query.bucket,tabLock[req.params.iWait].objectName,JSON.stringify(myFileSystem),tabLock[req.params.iWait]);
+        if (code===200){
+              return res.status(200).send({status:200, msg:'file system ' + req.params.name + ' has been reset and file saved with metadata'});
+          } else if (code===201){
+              return res.status(201).send({status:201,msg:'file system ' + req.params.name + ' has been reset and file is saved but metaData not updated'});
+          } else {
+              return res.status(202).send({status:202,msg:'file system memory has been reset but file could not be saved'});
+          }
+    }
 
       // myFileSystem = tabFS[record].content
       myFileSystem = await getFileSystem(req.query.bucket, req.params.projectId, tabLock[req.params.iWait].objectName);
@@ -374,7 +396,7 @@ const resetFS= async (req, res) => {
       } 
     }
     catch (err){
-      return ({error:"System failure " + err, status:700});
+      return ({msg:"System failure " + err, status:700});
     }
 }
 
@@ -468,7 +490,7 @@ async function saveFS(projectId, bucket,object,fileContent,tablockItem){
         if (tablockItem.action!=='onDestroy'){
           resetInUseFileSystem(tablockItem);
           console.log(tablockItem.action + " is completed for user " + tablockItem.userServerId)
-          //return res.send({tabLock:tabLock, message: tablockItem.action + " is completed for user " + tablockItem.userServerId, status:200});
+          //return res.send({tabLock:tabLock, msg: tablockItem.action + " is completed for user " + tablockItem.userServerId, status:200});
         } 
         return(200);
 
@@ -478,7 +500,7 @@ async function saveFS(projectId, bucket,object,fileContent,tablockItem){
         if (tablockItem.action!=='onDestroy'){
           console.log(tablockItem.action + " is completed without metadata for user " + tablockItem.userServerId + " error==>" + err);
           resetInUseFileSystem(tablockItem);
-          //return res.send({tabLock:tabLock, message: tablockItem.action + " is completed without metadata for user " + tablockItem.userServerId, status:200});
+          //return res.send({tabLock:tabLock, msg: tablockItem.action + " is completed without metadata for user " + tablockItem.userServerId, status:200});
         } 
         return(201);
 
@@ -489,7 +511,7 @@ async function saveFS(projectId, bucket,object,fileContent,tablockItem){
     if (tablockItem.action!=='onDestroy'){
         console.log('after save is a failure for user ' + tablockItem.userServerId + '  error= ' + err);
         resetInUseFileSystem(tablockItem);
-        //return res.send({message:"after save is a failure for user " + tablockItem.userServerId +  ' on action ' + tablockItem.action, status:997});
+        //return res.send({msg:"after save is a failure for user " + tablockItem.userServerId +  ' on action ' + tablockItem.action, status:997});
       } 
       console.log('saveFS ==> error detected - 997');
       return(997);

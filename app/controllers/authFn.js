@@ -117,14 +117,10 @@ const getCredentials= async (req, res) => {
       };
       const storage = new Storage(storageOptions);
       
-      //const bucket = storage.bucket(req.query.bucket);
-      //bucket.projectId=req.params.projectId;
       
-      
-      const url = `https://dns.googleapis.com/dns/v1/projects/${req.params.projectId}`;
+      //const url = `https://dns.googleapis.com/dns/v1/projects/${req.params.projectId}`;
+      //onst theResponse = await client.request({ url });
 
-      const theResponse = await client.request({ url });
-      // console.log(theResponse.data);
       try{
         const myDate = stdFunctions.defineMyDate();
         const credentials= {access_token:client.credentials.access_token,id_token:client.credentials.id_token
@@ -136,7 +132,7 @@ const getCredentials= async (req, res) => {
       }
     }
     catch (err){
-      res.status(720).send({status:710, err:err});
+      res.status(700).send({status:700, error:err});
     }
   }
 

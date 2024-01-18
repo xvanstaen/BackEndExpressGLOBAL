@@ -34,7 +34,7 @@ async function accessDB(dbName,collection,body, userId,userPSW){
   if (dbName!==''){
     current_dbName=dbName;
   } else {
-    return res.send({ message: "Data base field is empty",status:520 });
+    return res.send({ msg: "Data base field is empty",status:520 });
   }
   if (collection === Tutorial.collection.name){
     await accessMongo.accessMongo(Tutorial, current_dbName);
@@ -77,7 +77,7 @@ const save = async (req, res) => {
   if (req.params.db!==''){
     current_dbName=req.params.db;
   } else {
-    return res.status(520).send({status:520, message:"Data base field is empty"});
+    return res.status(520).send({status:520, msg:"Data base field is empty"});
   }
 
   securityLevel= await securityCtrl.getSecurityAccess('xmv-it-consulting',req.params.userId, req.params.userPSW);
@@ -120,10 +120,10 @@ const save = async (req, res) => {
         return res.send(resp);
       }
     catch(err) {
-        return res.status(510).send({status:510, message:err.message});
+        return res.status(510).send({status:510, msg:err.message});
     };
   }  catch(err) {
-      return res.status(521).send({status:521, message:"FAILURE " + err.message});
+      return res.status(521).send({status:521, msg:"FAILURE " + err.message});
   }; 
 
 };
@@ -148,29 +148,29 @@ const update = async (req, res) => {
     //accessMongo.accessMongo(Tutorial, req.query.db);
     const theValue= await accessDB(req.params.db,req.params.collection,"");
     //accessMongo.accessMongo(Tutorial, req.query.db);
-    if (theValue.message!==undefined){
-      return  res.status(520).send({status:520, message:theValue.message});
+    if (theValue.msg!==undefined){
+      return  res.status(520).send({status:520, msg:theValue.msg});
     }
     if  (theValue.error!==0){
-      return res.status(540).send({status:540, message:'collection ' + req.params.collection + ' is invalid'});
+      return res.status(540).send({status:540, msg:'collection ' + req.params.collection + ' is invalid'});
     }
     const id = req.params.id;
     try{
       const resp = await theValue.col.findByIdAndUpdate(id, req.body, { useFindAndModify: false })
       try {
           if (!resp) {
-            return res.status(220).send({status220, message:
+            return res.status(220).send({status220, msg:
               "Cannot update record with id=" + id + "Maybe record was not found!"});
           } else {
-            return res.send({message:"record id " + id + " was updated successfully", status:200});
+            return res.send({msg:"record id " + id + " was updated successfully", status:200});
           }
         }
       catch(err) {
-            return res.status(510).send({status:510, message:err.message + " Error updating record with id=" + req.params.id});
+            return res.status(510).send({status:510, msg:err.message + " Error updating record with id=" + req.params.id});
         };
   }
   catch(err) {
-      return res.status(521).send({status:521, message:"FAILURE " + err.message});
+      return res.status(521).send({status:521, msg:"FAILURE " + err.message});
   };  
 };
 
@@ -191,11 +191,11 @@ const deleteById = async (req, res) => {
 }
   const theValue=await accessDB(req.params.db,req.params.collection,"");
   //accessMongo.accessMongo(Tutorial, req.query.db);
-  if (theValue.message!==undefined){
-    return  res.status(520).send({status:520, message:theValue.message});
+  if (theValue.msg!==undefined){
+    return  res.status(520).send({status:520, msg:theValue.msg});
   }
   if  (theValue.error!==0){
-    return res.status(540).send({status:540, message:'collection ' + req.params.collection + ' is invalid'});
+    return res.status(540).send({status:540, msg:'collection ' + req.params.collection + ' is invalid'});
   }
   const id = req.params.id;
    
@@ -203,18 +203,18 @@ const deleteById = async (req, res) => {
     const resp = await theValue.col.findByIdAndRemove(id)
     try {
         if (!resp) {
-          return res.status(220).send({status:220, message:"Cannot find record with id=" + id});
+          return res.status(220).send({status:220, msg:"Cannot find record with id=" + id});
         } else {
-          return res.send({message:'successful deletion of record id ' + id, status:200});
+          return res.send({msg:'successful deletion of record id ' + id, status:200});
         }
       }
     catch(err) {
-          return res.status(510).send({status:510, message:"Could not delete record with id=" + id});
+          return res.status(510).send({status:510, msg:"Could not delete record with id=" + id});
       
       };
   }
   catch(err) {
-      return res.status(521).send({status:521, message:"FAILURE " + err.message});
+      return res.status(521).send({status:521, msg:"FAILURE " + err.message});
   };  
 };
 
@@ -235,11 +235,11 @@ const deleteByString = async (req, res) => {
 }
   const theValue=await accessDB(req.params.db,req.params.collection,"");
   //accessMongo.accessMongo(Tutorial, req.query.db);
-  if (theValue.message!==undefined){
-    return  res.status(520).send({status:520, message:theValue.message});
+  if (theValue.msg!==undefined){
+    return  res.status(520).send({status:520, msg:theValue.msg});
   }
   if  (theValue.error!==0){
-    return res.status(540).send({status:540, message:'collection ' + req.params.collection + ' is invalid'});
+    return res.status(540).send({status:540, msg:'collection ' + req.params.collection + ' is invalid'});
   }
   const id = req.params.id;
   var searchString = req.query.searchString;
@@ -250,17 +250,17 @@ const deleteByString = async (req, res) => {
     const resp = await theValue.col.deleteOne(query) // deleteOne
     try {
         if (resp.deletedCount===0) {
-          return res.status(220).send({status:220, message:'no record matches the search criteria'});
+          return res.status(220).send({status:220, msg:'no record matches the search criteria'});
         } else {
           return res.send(resp);// works when EXACT MATCH
         }
       }
     catch(err) {
-          return res.status(510).send({status:510, message:"Could not delete record with search string" + req.query.searchString});
+          return res.status(510).send({status:510, msg:"Could not delete record with search string" + req.query.searchString});
       };
   }
   catch(err) {
-      return res.status(521).send({status:521, message:"FAILURE " + err.message});
+      return res.status(521).send({status:521, msg:"FAILURE " + err.message});
   };
 }; 
 // Delete all records in a given collection
@@ -280,23 +280,23 @@ const deleteAll = async (req, res) => {
   }
   const theValue=await accessDB(req.params.db,req.params.collection,"");
   //accessMongo.accessMongo(Tutorial, req.query.db);
-  if (theValue.message!==undefined){
-    return  res.status(520).send({status:520, message:theValue.message});
+  if (theValue.msg!==undefined){
+    return  res.status(520).send({status:520, msg:theValue.msg});
   }
   if  (theValue.error!==0){
-    return res.status(540).send({status:540, message:'collection ' + req.params.collection + ' is invalid'});
+    return res.status(540).send({status:540, msg:'collection ' + req.params.collection + ' is invalid'});
   }
   try{
     const resp = await theValue.col.deleteMany({})
     try {
-      return res.send({ message: `${resp.deletedCount} records were deleted successfully!`, status:200});
+      return res.send({ msg: `${resp.deletedCount} records were deleted successfully!`, status:200});
       }
     catch(err) {
-      return res.status(510).send({status:510, message:"error occurred while removing all records."});
+      return res.status(510).send({status:510, msg:"error occurred while removing all records."});
       };
   }
   catch(err) {
-      return res.status(521).send({status:521, message:"FAILURE " + err.message});
+      return res.status(521).send({status:521, msg:"FAILURE " + err.message});
   };
 };
 
@@ -304,11 +304,11 @@ const deleteAll = async (req, res) => {
 const findById = async (req, res) => {
   const theValue=  await accessDB(req.params.db,req.params.collection,"");
   //accessMongo.accessMongo(Tutorial, req.query.db);
-  if (theValue.message!==undefined){
-    return  res.status(520).send({status:520, message:theValue.message});
+  if (theValue.msg!==undefined){
+    return  res.status(520).send({status:520, msg:theValue.msg});
   }
   if  (theValue.error!==0){
-    return res.status(540).send({status:540, message:'collection ' + req.params.collection + ' is invalid'});
+    return res.status(540).send({status:540, msg:'collection ' + req.params.collection + ' is invalid'});
   }
  
   if (req.params.collection === usrPSW.collection.name && securityLevel.accessLevel!=='Very High'){
@@ -321,17 +321,17 @@ const findById = async (req, res) => {
     const resp = await theValue.col.findById(id)
     try {
       if (!resp) {
-        return  res.status(220).send({status:200, message:"Didn't find record with id " + req.params.id});
+        return  res.status(220).send({status:200, msg:"Didn't find record with id " + req.params.id});
       } else {
         return res.send(resp);
       }
     }
     catch(err) {
-          return res.status(510).send({status:510, message:err.message +  "  record with id=" + req.params.id });
+          return res.status(510).send({status:510, msg:err.message +  "  record with id=" + req.params.id });
       };
   }
   catch(err) {
-      return res.status(521).send({status:521, message:"FAILURE " + err.message});
+      return res.status(521).send({status:521, msg:"FAILURE " + err.message});
   }; 
      
 };
@@ -341,11 +341,11 @@ const findAll = async (req, res) => {
   const collection=req.params.collection;
   //cacheConsole.fillCacheConsole('in findAll req.params.collection=',collection);
   const theValue=await accessDB(req.params.db,collection,"");
-  if (theValue.message!==undefined){
-    return  res.status(520).send({status:520, message:theValue.message});
+  if (theValue.msg!==undefined){
+    return  res.status(520).send({status:520, msg:theValue.msg});
   }
   if  (theValue.error!==0){
-    return res.status(540).send({status:540, message:'collection ' + req.params.collection + ' is invalid'});
+    return res.status(540).send({status:540, msg:'collection ' + req.params.collection + ' is invalid'});
   }
   if (req.params.collection === usrPSW.collection.name && securityLevel.accessLevel!=='Very High'){
     return res.send({status:585,msg:"you don't have the permission to use this functionality"});
@@ -357,12 +357,12 @@ const findAll = async (req, res) => {
           return res.send(data);
         })
       .catch(err => {
-          return res.status(510).send({status:510, message:err.message + "  error occurred while retrieving all records"});
+          return res.status(510).send({status:510, msg:err.message + "  error occurred while retrieving all records"});
         });
     }
   catch(err) {
     //cacheConsole.fillCacheConsole('in findAll status=521', err.message);
-      return res.status(521).send({status:521, message:"FAILURE " + err.message});
+      return res.status(521).send({status:521, msg:"FAILURE " + err.message});
     };
   
 };
@@ -370,11 +370,11 @@ const findAll = async (req, res) => {
 // Retrieve all Tutorials from the database.
 const findByCriteria = async (req, res) => {
   const theValue=await accessDB(req.params.db,req.params.collection,"");
-  if (theValue.message!==undefined){
-    return  res.status(520).send({status:520, message:theValue.message});
+  if (theValue.msg!==undefined){
+    return  res.status(520).send({status:520, msg:theValue.msg});
   }
   if  (theValue.error!==0){
-    return res.status(540).send({status:540, message:'collection ' + req.params.collection + ' is invalid'});
+    return res.status(540).send({status:540, msg:'collection ' + req.params.collection + ' is invalid'});
   }
   if (req.params.collection === usrPSW.collection.name && securityLevel.accessLevel!=='Very High'){
     return res.send({status:585,msg:"you don't have the permission to use this functionality"});
@@ -390,11 +390,11 @@ const findByCriteria = async (req, res) => {
         return res.send(data);
     }
     catch(err) {
-        return res.status(510).send({status:510, message:err.message || "  error occurred while retrieving record by criteria"});
+        return res.status(510).send({status:510, msg:err.message || "  error occurred while retrieving record by criteria"});
     };
   }
   catch(err) {
-      return res.status(521).send({status:521, message:"FAILURE " + err.message});
+      return res.status(521).send({status:521, msg:"FAILURE " + err.message});
   };
 }
 
