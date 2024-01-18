@@ -22,15 +22,16 @@ var fileSystemCache = new nodecache;
 var lockFileSystem=[];
 
 function initCacheCredentialsFS(){
-  var credentials={date:"", userServerId:0};
-  credentials.date = stdFunctions.defineMyDate();
-  //credentials.userServerId = 0;
+  var credentials={creationDate:"", userServerId:0};
+  cacheConsole.fillCacheConsole("theValue.status="+ theValue.status, JSON.stringify(theValue.credentials));
+  const myDate = stdFunctions.defineMyDate();
+  credentials.creationDate = 0;
   credentialCache.set(0,credentials);
   return({status:200, credentials:credentials})
 }
 
 function getNewFSUserId(){
-  var credentials={date:"", userServerId:0};
+  var credentials={creationDate:"", userServerId:0};
   credentials=credentialCache.get(0);
   credentials.userServerId++;
   credentialCache.set(0,credentials);
@@ -49,6 +50,7 @@ const onFileSystem = async (req, res) => {
     } else { // if no credentials in memory then get them
       const theValue = initCacheCredentialsFS();
       credentials=theValue.credentials;
+      cacheConsole.fillCacheConsole("theValue.status="+ theValue.status, JSON.stringify(theValue.credentials));
       /**
       const theValue = await authFn.getDefaultCredentials(req.params.projectId);
       if (theValue.status===712){
@@ -65,7 +67,7 @@ const onFileSystem = async (req, res) => {
     // check if the retrieved credentials are the same as those provided by the application for this user; if not then download File System from Cloud Storage 
     if (credentials.userServerId===undefined || tabLock[req.params.iWait].credentialDate !== credentials.creationDate){
       // retrieve the File System -> objectName refers to the functionality that is locked 
-      //cacheConsole.fillCacheConsole("credentials are different, tabLock[req.params.iWait].credentialDate="+tabLock[req.params.iWait].credentialDate,"credentials.creationDate="+credentials.creationDate);
+      cacheConsole.fillCacheConsole("credentials are different, tabLock[req.params.iWait].credentialDate="+tabLock[req.params.iWait].credentialDate,"credentials.creationDate="+credentials.creationDate);
       myFileSystem = await getFileSystem(req.query.bucket, req.params.projectId, tabLock[req.params.iWait].objectName);
       if (myFileSystem.length>0){
           for (var i=0; i< myFileSystem.length && ( myFileSystem[i].object!==tabLock[req.params.iWait].object ||  myFileSystem[i].bucket!==tabLock[req.params.iWait].bucket); i++){}
@@ -96,6 +98,7 @@ const onFileSystem = async (req, res) => {
         cacheConsole.fillCacheConsole("credentials.creationDate="+credentials.creationDate,"");
         tabLock[req.params.iWait].credentialDate=credentials.creationDate;
         const theValue=getNewFSUserId();
+        cacheConsole.fillCacheConsole("theValue.status="+ theValue.status, JSON.stringify(theValue.credentials));
         /**
         const theValue=await authFn.fnGetNewServerUsrId(req.params.projectId);
 
@@ -306,7 +309,7 @@ const onFileSystem = async (req, res) => {
     }
     console.log('global failure for user ' + tabLock[req.params.iWait].userServerId + '  error==>' + err);
     resetInUseFileSystem(tabLock[req.params.iWait]);
-    return res.send({msg:"global failure for user " + tabLock[req.params.iWait].userServerId, status:999}); 
+    return res.send({msg:"global failure for user " + tabLock[req.params.iWait].userServerId + 'err='+err, status:999}); 
   /*  } */
   } 
 };
