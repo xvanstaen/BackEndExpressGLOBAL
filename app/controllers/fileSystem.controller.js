@@ -23,16 +23,28 @@ var lockFileSystem=[];
 
 function initCacheCredentialsFS(){
   var credentials={creationDate:"", userServerId:0};
-  cacheConsole.fillCacheConsole("theValue.status="+ theValue.status, JSON.stringify(theValue.credentials));
+  
   const myDate = stdFunctions.defineMyDate();
-  credentials.creationDate = 0;
+
+  credentials.creationDate = myDate;
   credentialCache.set(0,credentials);
   return({status:200, credentials:credentials})
 }
 
+const getFSCredentials= async (req, res) => {
+  const theValue=getNewFSUserId();
+  return res.send({status:200, credentials:theValue.credentials})
+}
+
 function getNewFSUserId(){
   var credentials={creationDate:"", userServerId:0};
-  credentials=credentialCache.get(0);
+  if ( credentialCache.has(0)){
+    credentials=credentialCache.get(0);
+  } else {
+    const myCred=initCacheCredentialsFS();
+    credentials=myCred.credentials;
+  }
+  
   credentials.userServerId++;
   credentialCache.set(0,credentials);
   return({status:200, credentials:credentials})
@@ -77,7 +89,7 @@ const onFileSystem = async (req, res) => {
             // need to check if timeout occured; if NO then return msg to the requesting app-user otherwise assign the record to this user
           
             const timeOutValue=stdFunctions.fnAddTime(myFileSystem[i].updatedAt,myFileSystem[i].timeoutFileSystem.hh,myFileSystem[i].timeoutFileSystem.mn);
-            const currentTime=defineMyDate();
+            const currentTime=stdFunctions.defineMyDate();
             if (Number(currentTime) <= Number(timeOutValue)){
               theMsg="File System: server was reset and file is locked by another user; didn't reach time out";
               console.log(theMsg);
@@ -658,5 +670,6 @@ function checkData(fileSystem, iWait, tabLock, credentialDate){
   module.exports = {
     onFileSystem,
     resetFS,
-    getMemoryFS
+    getMemoryFS,
+    getFSCredentials
   }

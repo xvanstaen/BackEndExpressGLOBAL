@@ -164,9 +164,10 @@ const getFileContent = async (req, res) => {
 
 const  checkLogin = async (req, res) => {
   try {
+    const thePSW = await cryptoFn.getDecryptAll(req.params.psw, 1, 'AES', 0, req.params.projectId)
     const myDecrypt = await securityCtrl.getUserPswRecord(req.params.projectId,req.params.userId );
     
-    if (myDecrypt.data === "Key invalid" || myDecrypt.data !== req.params.psw){
+    if (myDecrypt.data === "Key invalid" || myDecrypt.data !== thePSW){
       return res.status(520).send({msg:"invalid id/psw", status:520});
     } 
     const storage = await authFn.getClient(req.params.projectId);
