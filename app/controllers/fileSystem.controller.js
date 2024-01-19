@@ -126,7 +126,7 @@ const onFileSystem = async (req, res) => {
     console.log('===> in updateFileSystem() for user ' + JSON.stringify(tabLock[req.params.iWait]) );
     console.log('lockFileSystem='+JSON.stringify(lockFileSystem));
     if (tabLock[0].action!=='onDestroy'){
-      const inUse=inUseFileSystem(tabLock[req.params.iWait]);
+      const inUse=inUseFileSystem(tabLock[req.params.iWait],req.params.server);
       if (inUse.code!==0 ){
         console.log('retry later, status error=' + inUse.code);
         return res.send({msg: 'retry later', status:inUse.code});
@@ -142,7 +142,7 @@ const onFileSystem = async (req, res) => {
           
           if (tabLock[iWait].lock===1){
             tabLock[iWait].action='onDestroy';
-            const inUse = inUseFileSystem(tabLock[iWait]);
+            const inUse = inUseFileSystem(tabLock[iWait],req.params.server);
             tabInUse[iWait]=inUse.code;
           } else {
             tabInUse[iWait]=1;
@@ -393,7 +393,7 @@ const resetFS= async (req, res) => {
     }
 }
 
-function inUseFileSystem(tablockItem){
+function inUseFileSystem(tablockItem, server){
 
   const recordFS={
     action:"", objectName:"", createdAt:"", updatedAt:"", access:0, userServerId:0, dateTime:"",server:"",
@@ -421,7 +421,7 @@ function inUseFileSystem(tablockItem){
     const currentDateTime=stdFunctions.defineMyDate();
     if (currentDateTime > refDate){
       // the lock was for too long; previous error not detected; 
-      console.log(' lockFile record is updated because was there for more than 2 minutes'); 
+      console.log(' lockFile record is updated because it was there for more than 2 minutes'); 
       lockFileSystem[i].objectName = tablockItem.objectName;
       lockFileSystem[i].action = tablockItem.action;
       lockFileSystem[i].createdAt = tablockItem.createdAt;
@@ -430,6 +430,7 @@ function inUseFileSystem(tablockItem){
       lockFileSystem[i].timeoutFileSystem.hh = tablockItem.timeoutFileSystem.hh;
       lockFileSystem[i].timeoutFileSystem.mn = tablockItem.timeoutFileSystem.mn;
       lockFileSystem[i].access=0;
+      lockFileSystem[i].server=server;
       lockFileSystem[i].dateTime=currentDateTime;
       return({code:0});
     } 
