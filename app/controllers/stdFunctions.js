@@ -91,7 +91,7 @@ function fnAddTime(theDate, addHour, addMin){
     return(fileSystem);
   }
   
-  function validateLock(fileSystem, inData, record){
+  function validateLock(fileSystem, inData, record,server){
   
     const refDate = fnAddTime(fileSystem[record].updatedAt, inData.timeoutFileSystem.hh, inData.timeoutFileSystem.mn);
     const myDate = defineMyDate();
@@ -103,6 +103,7 @@ function fnAddTime(theDate, addHour, addMin){
         fileSystem[record].byUser=inData.user;
         fileSystem[record].userServerId=inData.userServerId;
         fileSystem[record].IpAddress=inData.IpAddress;
+        fileSystem[fileSystem.length-1].server=server;
         fileSystem[record].credentialDate=inData.credentialDate;
         fileSystem[record].timeoutFileSystem.hh = inData.timeoutFileSystem.hh;
         fileSystem[record].timeoutFileSystem.mn = inData.timeoutFileSystem.mn;

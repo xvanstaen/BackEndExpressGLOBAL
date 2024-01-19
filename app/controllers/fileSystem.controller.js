@@ -55,6 +55,7 @@ const onFileSystem = async (req, res) => {
   var credentials='';
   var myFileSystem=[];
   var theMsg="";
+  var i=0;
   try {
     var tabLock=JSON.parse(req.params.tabLock);
 
@@ -66,29 +67,37 @@ const onFileSystem = async (req, res) => {
         cacheConsole.fillCacheConsole("theValue.status="+ theValue.status, JSON.stringify(theValue.credentials));
     }
 
+    // retrieve FS file as it may have been created through another server
+    myFileSystem = await getFileSystem(req.query.bucket, req.params.projectId, tabLock[req.params.iWait].objectName);
+    i=0;
+    if (myFileSystem.length>0){
+      for (i=0; i< myFileSystem.length && 
+        ( myFileSystem[i].object!==tabLock[req.params.iWait].object ||  myFileSystem[i].bucket!==tabLock[req.params.iWait].bucket ); i++){}
+    }
     // check if the retrieved credentials are the same as those provided by the application for this user; if not then download File System from Cloud Storage 
-    if (credentials.userServerId===undefined || tabLock[req.params.iWait].credentialDate !== credentials.creationDate){
+    if (credentials.userServerId===undefined || tabLock[req.params.iWait].credentialDate !== credentials.creationDate || (i>0 && myFileSystem[i].server!==req.params.server)){
       // retrieve the File System -> objectName refers to the functionality that is locked 
-      cacheConsole.fillCacheConsole("credentials are different, tabLock[req.params.iWait].credentialDate="+tabLock[req.params.iWait].credentialDate,"credentialse="+JSON.stringify(credentials));
-      myFileSystem = await getFileSystem(req.query.bucket, req.params.projectId, tabLock[req.params.iWait].objectName);
-
+      cacheConsole.fillCacheConsole("credentials or server are/is different, tabLock[req.params.iWait].credentialDate="+tabLock[req.params.iWait].credentialDate,"credentialse="+JSON.stringify(credentials));
+     
       if (myFileSystem.length>0){
-          for (var i=0; i< myFileSystem.length && 
-            ( myFileSystem[i].object!==tabLock[req.params.iWait].object ||  myFileSystem[i].bucket!==tabLock[req.params.iWait].bucket || myFileSystem[i].server!==req.params.server); i++){}
-          // if i< myFileSystem.length then the record has been found and it is related to another user
+          //for (var i=0; i< myFileSystem.length && 
+          //  ( myFileSystem[i].object!==tabLock[req.params.iWait].object ||  myFileSystem[i].bucket!==tabLock[req.params.iWait].bucket || myFileSystem[i].server!==req.params.server); i++){}
           
-          if (i< myFileSystem.length && myFileSystem[i].credentialDate === tabLock[req.params.iWait].credentialDate) { // was before=> credentials.creationDate
+            // if i< myFileSystem.length then the record has been found and it is related to another user
+          
+          if (i< myFileSystem.length && (myFileSystem[i].credentialDate === tabLock[req.params.iWait].credentialDate ||
+                      myFileSystem[i].server!==req.params.server)) { // was before=> credentials.creationDate
             // need to check if timeout occured; if NO then return msg to the requesting app-user otherwise assign the record to this user
           
             const timeOutValue=stdFunctions.fnAddTime(myFileSystem[i].updatedAt,myFileSystem[i].timeoutFileSystem.hh,myFileSystem[i].timeoutFileSystem.mn);
             const currentTime=stdFunctions.defineMyDate();
             if (Number(currentTime) <= Number(timeOutValue)){
-              theMsg="File System: server was reset and file is locked by another user; didn't reach time out";
+              theMsg="File System: server was reset or other server was used and file is still locked by another user; didn't reach time out";
               console.log(theMsg);
               cacheConsole.fillCacheConsole(theMsg,{status:956})
               return res.send({msg: theMsg, status:956});   
             }
-            theMsg='File System: server was reset, file was locked by another user but timeout occured;';
+            theMsg='File System: server was reset or other server was used, file was locked by another user but timeout occured;';
             console.log(theMsg);
             cacheConsole.fillCacheConsole(theMsg,{updatedAt:myFileSystem[i].updatedAt,timeOut:timeOutValue,currentTime:currentTime});
           } 
@@ -222,10 +231,11 @@ const onFileSystem = async (req, res) => {
             || tabLock[req.params.iWait].action==='updatedAt' ) {
 
 
-          var myFileSystem=[];
+          
           var trouve = false;
           var tabFS=[];
           var record=0;
+          /*
           if (fileSystemCache.has(0)){
               tabFS = fileSystemCache.get(0);
               for (record=0; record<tabFS.length && tabFS[record].fileName!==tabLock[req.params.iWait].objectName; record++){}
@@ -234,8 +244,9 @@ const onFileSystem = async (req, res) => {
                     trouve = true;
                   } 
           } 
+          */
           if (trouve === false){
-              myFileSystem = await getFileSystem(req.query.bucket, req.params.projectId, tabLock[req.params.iWait].objectName)
+              //myFileSystem = await getFileSystem(req.query.bucket, req.params.projectId, tabLock[req.params.iWait].objectName)
               const recordFS={fileName:"", content:""}
               tabFS.push(recordFS);
               tabFS[tabFS.length-1].fileName=tabLock[req.params.iWait].objectName;
@@ -248,7 +259,7 @@ const onFileSystem = async (req, res) => {
           // const [fileData] = await bucketFileSystem.file(tabLock[req.params.iWait].objectName).download();
           // const myFileSystem = await getFileSystem(req.query.bucket, req.params.projectId, tabLock[req.params.iWait].objectName)
           cacheConsole.fillCacheConsole('call checkData');
-          theStatus =checkData(myFileSystem, req.params.iWait, tabLock, credentials.creationDate);
+          theStatus =checkData(myFileSystem, req.params.iWait, tabLock, credentials.creationDate,req.params.server);
           cacheConsole.fillCacheConsole('theStatus=', theStatus);
           if (theStatus.theFile !== undefined){
              
@@ -554,7 +565,7 @@ function checkData(fileSystem, iWait, tabLock, credentialDate, server){
                 return({theFile:updatedFS, record:i});
               } else {
                 console.log('record in file system ' + JSON.stringify(fileSystem[i]) + ' already exists and is locked - Error 300; run validateLock()');
-                const validate=stdFunctions.validateLock(fileSystem,tabLock[iWait],i);
+                const validate=stdFunctions.validateLock(fileSystem,tabLock[iWait],i,server);
                 if (typeof validate === 'object') {
                   console.log('record is unlocked by validateLock')
                   return({theFile:validate, record:i});
