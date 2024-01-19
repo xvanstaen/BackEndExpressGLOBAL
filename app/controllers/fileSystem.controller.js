@@ -75,7 +75,7 @@ const onFileSystem = async (req, res) => {
         ( myFileSystem[i].object!==tabLock[req.params.iWait].object ||  myFileSystem[i].bucket!==tabLock[req.params.iWait].bucket ); i++){}
     }
     // check if the retrieved credentials are the same as those provided by the application for this user; if not then download File System from Cloud Storage 
-    if (credentials.userServerId===undefined || tabLock[req.params.iWait].credentialDate !== credentials.creationDate || (i>0 && myFileSystem[i].server!==req.params.server)){
+    if (credentials.userServerId===undefined || tabLock[req.params.iWait].credentialDate !== credentials.creationDate || (myFileSystem.length>0 && i<myFileSystem.length && myFileSystem[i].server!==req.params.server)){
       // retrieve the File System -> objectName refers to the functionality that is locked 
       cacheConsole.fillCacheConsole("credentials or server are/is different, tabLock[req.params.iWait].credentialDate="+tabLock[req.params.iWait].credentialDate,"credentialse="+JSON.stringify(credentials));
      

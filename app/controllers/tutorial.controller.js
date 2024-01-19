@@ -140,7 +140,7 @@ const update = async (req, res) => {
         && securityLevel.accessLevel!=='Very High'){
           return res.send({status:585,msg:"you don't have the permission to use this functionality"});
     }
-    if (req.params.collection === usrFS.collection.name 
+    if (req.params.collection === fileSystem.collection.name 
       && (securityLevel.accessLevel!=='Very High' && securityLevel.accessLevel!=='High')){
         return res.send({status:585,msg:"you don't have the permission to use this functionality"});
   }
@@ -185,7 +185,7 @@ const deleteById = async (req, res) => {
       && securityLevel.accessLevel!=='Very High'){
         return res.send({status:585,msg:"you don't have the permission to use this functionality"});
   }
-  if (req.params.collection === usrFS.collection.name 
+  if (req.params.collection === fileSystem.collection.name 
     && (securityLevel.accessLevel!=='Very High' && securityLevel.accessLevel!=='High')){
       return res.send({status:585,msg:"you don't have the permission to use this functionality"});
 }
@@ -229,7 +229,7 @@ const deleteByString = async (req, res) => {
       && securityLevel.accessLevel!=='Very High'){
         return res.send({status:585,msg:"you don't have the permission to use this functionality"});
   }
-  if (req.params.collection === usrFS.collection.name 
+  if (req.params.collection === fileSystem.collection.name 
     && (securityLevel.accessLevel!=='Very High' && securityLevel.accessLevel!=='High')){
       return res.send({status:585,msg:"you don't have the permission to use this functionality"});
 }
@@ -274,7 +274,7 @@ const deleteAll = async (req, res) => {
       && securityLevel.accessLevel!=='Very High'){
         return res.send({status:585,msg:"you don't have the permission to use this functionality"});
   }
-  if (req.params.collection === usrFS.collection.name 
+  if (req.params.collection === fileSystem.collection.name 
       && (securityLevel.accessLevel!=='Very High' && securityLevel.accessLevel!=='High')){
         return res.send({status:585,msg:"you don't have the permission to use this functionality"});
   }
