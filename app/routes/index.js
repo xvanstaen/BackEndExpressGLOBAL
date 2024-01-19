@@ -47,18 +47,20 @@ let routes = (app) => {
   router.get("/encryptAllFn/:projectId/:testProd/:inData/:inKey/:inMethod/:inAuth", cryptoFn.encryptFnAll);
   router.get("/decryptAllFn/:projectId/:testProd/:inData/:inKey/:inMethod/:inAuth", cryptoFn.decryptFnAll);
 
-  router.get("/requestDefaultCredentials/:projectId/:testProd", authFn.requestDefaultCredentials);
+ 
   router.get("/requestTokenOAuth2/:projectId/:testProd", authFn.requestTokenOAuth2);
   router.get("/refreshToken/:projectId/:testProd", authFn.refreshToken);
   router.get("/revokeToken/:projectId/:testProd", authFn.revokeToken);
   router.get("/checkAccessToken/:projectId/:testProd/:accessToken", authFn.checkAccessToken);
+  
   router.get("/getCredentials/:projectId/:testProd", authFn.getCredentials);
+  router.get("/requestDefaultCredentials/:projectId/:testProd", authFn.requestDefaultCredentials);
   router.get("/getNewServerUsrId/:projectId/:testProd", authFn.getNewServerUsrId);
 
-  router.get("/onFileSystem/:projectId/:testProd/:name/:tabLock/:iWait", fileSystem.onFileSystem);
+  router.get("/onFileSystem/:projectId/:testProd/:server/:name/:tabLock/:iWait", fileSystem.onFileSystem);
   router.get("/resetFS/:userId/:userPSW/:projectId/:testProd/:name/:tabLock/:iWait", fileSystem.resetFS);
-  router.get("/memoryFS/:userId/:userPSW/:projectId/:testProd", fileSystem.getMemoryFS);
-  router.get("/credentialsFS/:projectId/:testProd", fileSystem.getFSCredentials);
+  router.get("/memoryFS/:userId/:userPSW/:projectId/:testProd/:server", fileSystem.getMemoryFS);
+  router.get("/credentialsFS/:projectId/:testProd/:server", fileSystem.getFSCredentials);
 
   router.get("/getSecurity/:userId/:userPSW/:projectId/:testProd", securityCtrl.getSecurityLevel);
 

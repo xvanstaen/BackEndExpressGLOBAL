@@ -58,10 +58,10 @@ function fnAddTime(theDate, addHour, addMin){
   }
   
   
-  function createRecord(fileSystem, inData){
+  function createRecord(fileSystem, inData, server){
   
     const recordSystem={bucket:"", object:"", byUser:"",
-        IpAddress:"", lock:false, createdAt:"", updatedAt:"", userServerId:0, credentialDate:"", 
+        IpAddress:"", lock:false, createdAt:"", updatedAt:"", userServerId:0, credentialDate:"", server:"",
         timeoutFileSystem:{hh:0, mn:0}
     }
     
@@ -75,6 +75,8 @@ function fnAddTime(theDate, addHour, addMin){
     fileSystem[fileSystem.length-1].credentialDate=inData.credentialDate;
     fileSystem[fileSystem.length-1].timeoutFileSystem.hh = inData.timeoutFileSystem.hh;
     fileSystem[fileSystem.length-1].timeoutFileSystem.mn = inData.timeoutFileSystem.mn;
+
+    fileSystem[fileSystem.length-1].server=server;
     /*
     const aDate=Date.now();
     const theDate=new Date(aDate).toUTCString();
