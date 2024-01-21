@@ -58,7 +58,7 @@ let routes = (app) => {
   router.get("/getNewServerUsrId/:projectId/:testProd", authFn.getNewServerUsrId);
 
   router.get("/onFileSystem/:projectId/:testProd/:server/:name/:tabLock/:iWait", fileSystem.onFileSystem);
-  router.get("/resetFS/:userId/:userPSW/:projectId/:testProd/:name/:tabLock/:iWait", fileSystem.resetFS);
+  router.get("/resetFS/:userId/:userPSW/:projectId/:testProd/:server/:name/:tabLock/:iWait", fileSystem.resetFS);
   router.get("/memoryFS/:userId/:userPSW/:projectId/:testProd/:server", fileSystem.getMemoryFS);
   router.get("/credentialsFS/:projectId/:testProd/:server", fileSystem.getFSCredentials);
 

@@ -246,12 +246,18 @@ const onFileSystem = async (req, res) => {
           } 
           */
           if (trouve === false){
+              if (fileSystemCache.has(0)){
+                tabFS = fileSystemCache.get(0);
+              }
               //myFileSystem = await getFileSystem(req.query.bucket, req.params.projectId, tabLock[req.params.iWait].objectName)
-              const recordFS={fileName:"", content:""}
-              tabFS.push(recordFS);
-              tabFS[tabFS.length-1].fileName=tabLock[req.params.iWait].objectName;
-              tabFS[tabFS.length-1].content=myFileSystem;
-              record=tabFS.length-1;
+              for (var record=0; record<tabFS.length && tabFS[record].fileName!==tabLock[req.params.iWait].objectName; record++){}
+              if (record===tabFS.length){
+                const recordFS={fileName:"", content:""}
+                tabFS.  push(recordFS);
+              }
+              
+              tabFS[record].fileName=tabLock[req.params.iWait].objectName;
+              tabFS[record].content=myFileSystem;
               fileSystemCache.set(0,tabFS);
               console.log('File System: memory record is created for ' + tabLock[req.params.iWait].objectName);
               cacheConsole.fillCacheConsole('File System: memory record is created for ' + tabLock[req.params.iWait].objectName,myFileSystem);
@@ -354,54 +360,74 @@ const resetFS= async (req, res) => {
     var tabFS=[];
     var newTabFS=[];
     var record=0;
+    var nbFileProcessed=0;
+    var nbFileRemoved=0;
+    var code=0;
+  
       // const inUse=inUseFileSystem(tabLock[req.params.iWait]);
-    if (fileSystemCache.has(0)){
+    if (tabLock[req.params.iWait].action!=="resetAll" && fileSystemCache.has(0)){
         tabFS = fileSystemCache.get(0);
-        for (record=0; record<tabFS.length && tabFS[record].fileName!==tabLock[req.params.iWait].objectName; record++){}
+        for (record=0; record<tabFS.length && tabFS[record].fileName!==tabLock[req.params.iWait].objectName && req.params.server===tabFS[record].content[0].server; record++){}
         if (record<tabFS.length) {
-            tabFS[record].content=[];
-            var j=-1;
-            for (var i=0; i<tabFS.length; i++){
-              if (i!==record){
-                j++
-                newTabFS[j]=tabFS[i];
+            myFileSystem = await getFileSystem(req.query.bucket, req.params.projectId, tabFS[record].fileName);
+            for (j=0; j<myFileSystem.length && (tabLock[req.params.iWait].objectName!==myFileSystem[j].objectName || myFileSystem[j].server===req.params.server); j++){
+              if (j<myFileSystem.length){
+                myFileSystem.splice(j,1);
+                code = await saveFS(req.params.projectId, req.query.bucket,tabLock[req.params.iWait].objectName,JSON.stringify(myFileSystem),tabLock[req.params.iWait]);
+    
               }
             }
-            fileSystemCache.set(0,newTabFS);
+            tabFS.splice(record,1);
+            fileSystemCache.set(0,tabFS);
+            if (code===200){
+              return res.status(200).send({status:200,msg:'file system ' + req.params.name + ' has been reset for ' + tabLock[req.params.iWait].object + ' , file saved with metadata'});
+            } else if (code===201){
+              return res.status(201).send({status:201,msg:'file system ' + req.params.name + ' has been resetfor ' + tabLock[req.params.iWait].object + ', file saved but metaData not updated'});
+            } else {
+                return res.status(202).send({status:202, msg:'file system memory has been reset but file ' + req.params.name + ' could not be saved'});
+            }
           } 
-        } 
-    if (tabLock[req.params.iWait].action==="resetAll"){
-        fileSystemCache.set(0,newTabFS);
-        const code = await saveFS(req.params.projectId, req.query.bucket,tabLock[req.params.iWait].objectName,JSON.stringify(myFileSystem),tabLock[req.params.iWait]);
-        if (code===200){
-              return res.status(200).send({status:200, msg:'file system ' + req.params.name + ' has been reset and file saved with metadata'});
-          } else if (code===201){
-              return res.status(201).send({status:201,msg:'file system ' + req.params.name + ' has been reset and file is saved but metaData not updated'});
-          } else {
-              return res.status(202).send({status:202,msg:'file system memory has been reset but file could not be saved'});
-          }
-    }
-
-      // myFileSystem = tabFS[record].content
-      myFileSystem = await getFileSystem(req.query.bucket, req.params.projectId, tabLock[req.params.iWait].objectName);
-      for (record=0; record<myFileSystem.length && myFileSystem[record].object!==tabLock[req.params.iWait].object; record++){}
-      if (record<myFileSystem.length) {
-          myFileSystem.splice(record,1);
-          const code = await saveFS(req.params.projectId, req.query.bucket,tabLock[req.params.iWait].objectName,JSON.stringify(myFileSystem),tabLock[req.params.iWait]);
-          if (code===200){
-            return res.status(200).send({status:200,msg:'file system ' + req.params.name + ' has been reset for ' + tabLock[req.params.iWait].object + ' , file saved with metadata'});
-          } else if (code===201){
-            return res.status(201).send({status:201,msg:'file system ' + req.params.name + ' has been resetfor ' + tabLock[req.params.iWait].object + ', file saved but metaData not updated'});
-          } else {
-              return res.status(202).send({status:202, msg:'file system memory has been reset but file ' + req.params.name + ' could not be saved'});
-          }
-      } else {
           return res.status(203).send({status:203,msg:'file system memory' + req.params.name + ' has been reset but record '+ tabLock[req.params.iWait].object + ' in file ' + req.params.name + ' was not found'});
-      } 
-    }
-    catch (err){
-      return ({msg:"System failure " + err, status:700});
-    }
+        } else if (tabLock[req.params.iWait].action==="resetAll"  && fileSystemCache.has(0)){
+            tabFS = fileSystemCache.get(0);
+            for (var i=tabFS.length-1; i>-1; i--){
+              if (req.params.server===tabFS[i].content[0].server){
+                myFileSystem = await getFileSystem(req.query.bucket, req.params.projectId, tabFS[i].fileName);
+                const lenFile=myFileSystem.length;
+                var j=0;
+                for (j=myFileSystem.length-1; j>-1; j--){
+                  if (myFileSystem[j].object===tabFS[i].content[0].object && 
+                    myFileSystem[j].bucket===tabFS[i].content[0].bucket && 
+                    myFileSystem[j].server===tabFS[i].content[0].server){
+                    myFileSystem.splice(j,1);
+                  }
+                }
+                if (myFileSystem.length !== lenFile){
+                  const code = await saveFS(req.params.projectId, req.query.bucket,tabFS[i].fileName,JSON.stringify(myFileSystem),tabLock[req.params.iWait]);
+                  if (code===200 || code===201){
+                    nbFileProcessed++;
+                  }
+                } 
+                tabFS.splice(i,1);
+                nbFileRemoved++;
+              }
+            }   
+            tabFS=[];
+            fileSystemCache.set(0,tabFS);
+            return res.status(200).send({status:200,msg: nbFileProcessed + ' file(s)/record(s) removed '+  nbFileRemoved + ' file(s) removed from memory'});``
+        } else {
+          if (fileSystemCache.has(0)){
+            return res.status(205).send({status:206,msg:'FS memory cache does not contain records corresponding to the request'});
+          } else {
+            return res.status(200).send({status:205,msg:'FS memory cache is empty'});
+          }
+          
+        }
+
+  }
+  catch (err){
+    return ({msg:"System failure " + err, status:700});
+  }
 }
 
 function inUseFileSystem(tablockItem, server){
