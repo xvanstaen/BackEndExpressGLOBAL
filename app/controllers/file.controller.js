@@ -122,7 +122,7 @@ const getFileContent = async (req, res) => {
     if (i<listFiles.length  && (cache.get(i)) && listFiles[i].updated===false) {
         console.log('retrieve file  ' + req.params.name + ' from cache ' + i);
 
-        //cacheConsole.fillCacheConsole('retrieve file '+ req.params.name + ' from cache ' + i + " listFiles=","listFiles");
+        //cacheConsole.fillCacheConsole('getFileContent','retrieve file '+ req.params.name + ' from cache ' + i + " listFiles=","listFiles");
         
         return res.status(200).send(cache.get(i));
     } 
@@ -136,7 +136,7 @@ const getFileContent = async (req, res) => {
     res.redirect(metaData.mediaLink);
      */
     console.log('retrieve file '+ req.params.name);
-    //cacheConsole.fillCacheConsole('retrieve file '+ req.params.name ,listFiles);
+    //cacheConsole.fillCacheConsole('getFileContent','retrieve file '+ req.params.name ,listFiles);
     const [downloadFile] = await bucket.file(req.params.name).download();        
     try{
       const theJson=JSON.parse(downloadFile)
@@ -270,11 +270,12 @@ const upload =async (req, res) => {
   }
 };
 
+
+
+
 const uploadMetaPerso =async (req, res) => {
   try {
-
-    //cacheConsole.fillCacheConsole('in uploadMetaPerso',"");
-
+    //cacheConsole.fillCacheConsole('uploadMetaPerso','in uploadMetaPerso',"");
     const storage = await authFn.getClient(req.params.projectId);
    
     var bucket = storage.bucket(req.query.bucket);
@@ -288,16 +289,7 @@ const uploadMetaPerso =async (req, res) => {
 
     // Create a new blob in the bucket and upload the file data. req.params.name
     const blob = bucket.file(req.file.originalname);
-    /*
-    var theContentType="";
-    if (req.params.contentType==='json' || req.params.contentType==='application') {
-      theContentType='application/json';
-    } else if (req.params.contentType==='text' || req.params.contentType==='plain') {
-      theContentType='text/plain';
-    } else {
-      theContentType = req.params.contentType;
-    }
-    */
+
     var tabMeta=JSON.parse(req.params.metaPerso);
  
     if (Array.isArray(tabMeta) === false) {
@@ -333,8 +325,7 @@ const uploadMetaPerso =async (req, res) => {
     const i = theValue.record;
     if (i<listFiles.length  && listFiles[i].file === req.params.name && listFiles[i].bucket === req.query.bucket) {
         console.log('flag field updated to true for file ' + req.params.name + ' in cache nb' + i);
-        //listFiles[i].updated=true;
-        //tabFile.set(0, listFiles);
+
         cacheFn.fillCacheFileUpdate(i,true);
     }
     return res.status(200).send({status:200, msg: "Uploaded the file successfully: " + req.file.originalname});

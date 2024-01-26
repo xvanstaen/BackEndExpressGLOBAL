@@ -3,6 +3,8 @@
 const cors = require("cors");
 const express = require("express");
 const app = express();
+var os = require('os');
+
 app.use(cors());
 app.use(express.json());
 // app.use(express.urlencoded({ extended: true }));
@@ -64,7 +66,7 @@ function displayStatus(code, nbRecords){
   });
   const port = process.env.PORT || 8080;
   app.listen(port, () => {
-    console.log(`==> Running ${myVersion} at localhost:${port}`);
+    console.log(`==> Running ${myVersion} at localhost:${port} on server ${os.hostname()} and IP address=${os.networkInterfaces().address}, homeDir=${os.homedir()} `);
   });
 }
 

@@ -339,7 +339,7 @@ const findById = async (req, res) => {
 // Find all records
 const findAll = async (req, res) => {
   const collection=req.params.collection;
-  //cacheConsole.fillCacheConsole('in findAll req.params.collection=',collection);
+  //cacheConsole.fillCacheConsole('Tutorials findAll', 'in findAll req.params.collection=',collection);
   const theValue=await accessDB(req.params.db,collection,"");
   if (theValue.msg!==undefined){
     return  res.status(520).send({status:520, msg:theValue.msg});
@@ -361,7 +361,7 @@ const findAll = async (req, res) => {
         });
     }
   catch(err) {
-    //cacheConsole.fillCacheConsole('in findAll status=521', err.message);
+    //cacheConsole.fillCacheConsole('Tutorials findAll','in findAll status=521', err.message);
       return res.status(521).send({status:521, msg:"FAILURE " + err.message});
     };
   
