@@ -24,6 +24,7 @@ var lockFileSystem=[];
 var theProjectId="";
 var theServer="";
 
+/*****
 function initCacheCredentialsFS(server){
   var credentials={creationDate:"", userServerId:0, server:server};
   
@@ -34,8 +35,8 @@ function initCacheCredentialsFS(server){
   return({status:200, credentials:credentials})
 }
 
-function getNewFSUserId(server){
-  var credentials={creationDate:"", userServerId:0, server:server};
+function getCredentialsInFS(server){
+  //var credentials={creationDate:"", userServerId:0, server:server};
   if ( credentialCache.has(0)){
     credentials=credentialCache.get(0);
   } else {
@@ -43,16 +44,28 @@ function getNewFSUserId(server){
     credentials=myCred.credentials;
   }
   
-  credentials.userServerId++;
   credentialCache.set(0,credentials);
   return({status:200, credentials:credentials})
 }
 
+function getNewFSUserId(server){
+  const theValue = getCredentialsInFS(server);
+  
+  theValue.credentials.userServerId++;
+  credentialCache.set(0,theValue.credentials);
+  return({status:200, credentials:theValue.credentials})
+}
+
 const getFSCredentials= async (req, res) => {
-  const theValue=getNewFSUserId(req.params.server);
+  const theValue=getCredentialsInFS(req.params.server);
   return res.send({status:200, credentials:theValue.credentials})
 }
 
+const getFSNewUserId= async (req, res) => {
+  const theValue=getNewFSUserId(req.params.server);
+  return res.send({status:200, credentials:theValue.credentials})
+}
+*****/
 
 const onFileSystem = async (req, res) => {
   var credentials='';
@@ -63,19 +76,28 @@ const onFileSystem = async (req, res) => {
   var i=0;
   try {
     var tabLock=JSON.parse(req.params.tabLock);
-    cacheConsole.fillCacheConsole(req.params.server,req.params.projectId,'File System',"=== start the process", {tabLock:tabLock[req.params.iWait]}); 
-    cacheConsole.fillCacheConsole(req.params.server,req.params.projectId,'File System',"user=" +tabLock[req.params.iWait].userServerId);
-
+    cacheConsole.fillCacheConsole(req.params.server,req.params.projectId,'File System',"=== start the process for user "+ +tabLock[req.params.iWait].userServerId, {tabLock:tabLock[req.params.iWait]}); 
+    /*
     if ( credentialCache.has(0)){ // retrieve credentials values in memory
         credentials=credentialCache.get(0);
+        cacheConsole.fillCacheConsole(req.params.server,req.params.projectId,'File System',"credentials retrieved from memory", {credentials:credentials});
     } else { // if no credentials in memory then get them
-        const theValue = initCacheCredentialsFS(req.params.server);
+        const theValue = await authFn.getCredentialsFn(req.params.server);
         credentials=theValue.credentials;
+        credentialCache.set(0, credentials);
         cacheConsole.fillCacheConsole(req.params.server,req.params.projectId,'File System',"no credentials in memory, theValue.status="+ theValue.status, {credentials:theValue.credentials});
     }
-
+    */
+    const theValue = await authFn.getCredentialsFn(req.params.server);
+    credentials=theValue.credentials;
+    credentialCache.set(0, credentials);
+    cacheConsole.fillCacheConsole(req.params.server,req.params.projectId,'File System',"credentials retrieved, theValue.status="+ theValue.status, {credentials:theValue.credentials});
+    if (theValue.status!==200){
+      return({err:theValue.status, msg:"pb when retrieving credentials on server " + req.params.server});
+    }
     // retrieve FS file as it may have been created through another server
     myFileSystem = await getFileSystem(req.query.bucket, req.params.projectId, tabLock[req.params.iWait].objectName);
+    cacheConsole.fillCacheConsole(req.params.server,req.params.projectId,'File System',"file "+ tabLock[req.params.iWait].objectName +" retrieved",{fileSystem:myFileSystem});
     i=0;
     if (myFileSystem.length>0){
       for (i=0; i< myFileSystem.length && 
@@ -84,7 +106,7 @@ const onFileSystem = async (req, res) => {
     // check if the retrieved credentials are the same as those provided by the application for this user; if not then download File System from Cloud Storage 
     if (credentials.userServerId===undefined || tabLock[req.params.iWait].credentialDate !== credentials.creationDate || (myFileSystem.length>0 && i<myFileSystem.length && myFileSystem[i].server!==req.params.server)){
       // retrieve the File System -> objectName refers to the functionality that is locked 
-      cacheConsole.fillCacheConsole(req.params.server,req.params.projectId,'File System',"credentials or server are/is different, tabLock[req.params.iWait].credentialDate="+tabLock[req.params.iWait].credentialDate,{credentials:credentials,fileSystem:myFileSystem});
+      cacheConsole.fillCacheConsole(req.params.server,req.params.projectId,'File System',"credentials or server are/is different, tabLock[req.params.iWait].credentialDate="+tabLock[req.params.iWait].credentialDate,{credentials:credentials});
      
       if (myFileSystem.length>0){
           //for (var i=0; i< myFileSystem.length && 
@@ -92,7 +114,7 @@ const onFileSystem = async (req, res) => {
           
             // if i< myFileSystem.length then the record has been found and it is related to another user
           
-          if (i< myFileSystem.length && (myFileSystem[i].credentialDate === tabLock[req.params.iWait].credentialDate ||
+          if (i< myFileSystem.length && (myFileSystem[i].credentialDate !== tabLock[req.params.iWait].credentialDate ||
                       myFileSystem[i].server!==req.params.server)) { // was before=> credentials.creationDate
             // need to check if timeout occured; if NO then return msg to the requesting app-user otherwise assign the record to this user
           
@@ -116,7 +138,10 @@ const onFileSystem = async (req, res) => {
       // file is not locked by any user so process continues
       cacheConsole.fillCacheConsole(req.params.server,req.params.projectId,'File System',"file is not locked by any user so process continues", {credentials:credentials});
       
-      const theValue=getNewFSUserId(req.params.server);
+      const theValue=await authFn.getNewServerUsrIdFn(req.params.server);
+      credentials=theValue.credentials;
+      credentialCache.set(0, credentials);
+
       cacheConsole.fillCacheConsole(req.params.server,req.params.projectId,'File System',"new userId assigned theValue.status="+ theValue.status, {credentials:theValue.credentials});
       tabLock[req.params.iWait].credentialDate=credentials.creationDate;
       tabLock[req.params.iWait].userServerId=theValue.credentials.userServerId;
@@ -697,5 +722,5 @@ function checkData(fileSystem, iWait, tabLock, credentialDate, server){
     onFileSystem,
     resetFS,
     getMemoryFS,
-    getFSCredentials
+
   }

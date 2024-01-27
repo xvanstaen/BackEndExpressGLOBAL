@@ -37,8 +37,8 @@ async function getClient(projectId){
     return (new Storage(storageOptions));
   }
 
-const requestDefaultCredentials = async (req, res) => {
-      const theValue =  await getDefaultCredentials(req.params.projectId);
+const getDefaultCredentials = async (req, res) => {
+      const theValue =  await getDefaultCredentialsFn(req.params.projectId);
       if (theValue.status===200){
         res.status(200).send({credentials:theValue.credentials});
       } else {
@@ -46,7 +46,7 @@ const requestDefaultCredentials = async (req, res) => {
       }
   }
   
-async function getDefaultCredentials(projectId){
+async function getDefaultCredentialsFn(projectId){
     try {
       if ( cache.has(0)){
           credentials=cache.get(0);
@@ -74,26 +74,38 @@ async function getDefaultCredentials(projectId){
       return({status:200,credentials:credentials});
     }
     catch (err) {
-      return({status:712,err:err})
-
+      return({status:700,err:err})
     }
   }
 
-const getNewServerUsrId = async (req, res) => {
-  theValue = await getDefaultCredentials(req.params.projectId);
-  if (theValue.status===200){
-    credentials=theValue.credentials;
-    credentials.userServerId++
-    cache.set(0, credentials);
-    return res.send({status:200,credentials:credentials});  
-  } else {
-    return res.send(theValue);
+
+async function getCredentialsFn(projectId){
+  try {
+    if ( cache.has(0)){
+        credentials=cache.get(0);
+    } else {
+        const auth = new GoogleAuth({
+          scope: scopes,
+          projectId: projectId
+        });
+        const client = await auth.getClient();
+        const myDate = stdFunctions.defineMyDate();
+        credentials= {access_token:client.credentials.access_token,id_token:client.credentials.id_token
+          , refresh_token:client.credentials.refresh_token, token_type:client.credentials.token_type, userServerId:0, creationDate:myDate}
+
+        cache.set(0, credentials)
+        console.log('credentials.creationDate = ' + credentials.creationDate);
+    }
+    return({status:200,credentials:credentials});
   }
-  
+  catch (err) {
+    return({status:700,err:err})
+
+  }
 }
 
-async function fnGetNewServerUsrId(projectId){
-  theValue = await getDefaultCredentials(projectId);
+async function getNewServerUsrIdFn(projectId){
+  theValue = await getCredentialsFn(projectId);
   if (theValue.status===200){
     credentials=theValue.credentials;
     credentials.userServerId++
@@ -105,36 +117,24 @@ async function fnGetNewServerUsrId(projectId){
 }
 
 const getCredentials= async (req, res) => {
-    try{
-      const auth = new GoogleAuth({
-        scope: scopes,
-        projectId: req.params.projectId
-      });
-      const client = await auth.getClient();
-      const storageOptions = {
-        projectId: req.params.projectId,
-        authClient: client,
-      };
-      const storage = new Storage(storageOptions);
-      
-      
-      //const url = `https://dns.googleapis.com/dns/v1/projects/${req.params.projectId}`;
-      //onst theResponse = await client.request({ url });
-
-      try{
-        const myDate = stdFunctions.defineMyDate();
-        const credentials= {access_token:client.credentials.access_token,id_token:client.credentials.id_token
-          , refresh_token:client.credentials.refresh_token, token_type:client.credentials.token_type, userServerId:0, creationDate:myDate}
-          res.status(200).send({status:200,credentials:credentials});
-      }
-      catch (err){
-          res.status(710).send({status:710, err:err});
-      }
-    }
-    catch (err){
-      res.status(700).send({status:700, error:err});
-    }
+  try{
+    theValue = await getCredentialsFn(projectId);
+    return theValue;
   }
+  catch (err){
+    return({status:700,err:err})
+  }
+}
+
+const getNewServerUsrId = async (req, res) => {
+  try{
+    theValue = await getNewServerUsrIdFn(req.params.projectId);
+    return res.send(theValue);
+  }
+  catch (err){
+    return({status:700,err:err})
+  }
+}
 
 const  checkAccessToken = async (req, res) => {
     // after acquiring an oAuth2Client...
@@ -234,14 +234,15 @@ const requestTokenOAuth2 = async (req, res) => {
   module.exports = {
     getClient,
     getCredentials,
-    requestDefaultCredentials,
+    getCredentialsFn,
     getDefaultCredentials,
+    getDefaultCredentialsFn,
     checkAccessToken,
     requestTokenOAuth2, // to be tested
     refreshToken,// to be tested
     revokeToken,// to be tested
     getNewServerUsrId,
-    fnGetNewServerUsrId
+    getNewServerUsrIdFn
     
  
   }

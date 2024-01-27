@@ -54,13 +54,13 @@ let routes = (app) => {
   router.get("/checkAccessToken/:projectId/:testProd/:accessToken", authFn.checkAccessToken);
   
   router.get("/getCredentials/:projectId/:testProd", authFn.getCredentials);
-  router.get("/requestDefaultCredentials/:projectId/:testProd", authFn.requestDefaultCredentials);
+  router.get("/requestDefaultCredentials/:projectId/:testProd", authFn.getDefaultCredentials);
   router.get("/getNewServerUsrId/:projectId/:testProd", authFn.getNewServerUsrId);
 
   router.get("/onFileSystem/:projectId/:testProd/:server/:name/:tabLock/:iWait", fileSystem.onFileSystem);
   router.get("/resetFS/:userId/:userPSW/:projectId/:testProd/:server/:name/:tabLock/:iWait", fileSystem.resetFS);
   router.get("/memoryFS/:userId/:userPSW/:projectId/:testProd/:server", fileSystem.getMemoryFS);
-  router.get("/credentialsFS/:projectId/:testProd/:server", fileSystem.getFSCredentials);
+  //router.get("/credentialsFS/:projectId/:testProd/:server", fileSystem.getFSCredentials);
 
   router.get("/getSecurity/:userId/:userPSW/:projectId/:testProd", securityCtrl.getSecurityLevel);
 
