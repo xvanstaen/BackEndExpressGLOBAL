@@ -90,8 +90,24 @@ async function getCredentialsFn(projectId){
         });
         const client = await auth.getClient();
         const myDate = stdFunctions.defineMyDate();
-        credentials= {access_token:client.credentials.access_token,id_token:client.credentials.id_token
-          , refresh_token:client.credentials.refresh_token, token_type:client.credentials.token_type, userServerId:0, creationDate:myDate}
+        credentials= {access_token:"",id_token:"", refresh_token:"", 
+            token_type:"", userServerId:0, creationDate:myDate}
+
+        if (client.credentials.access_token!==undefined){
+          credentials.access_token = client.credentials.access_token,id_token;
+        } else { credentials.access_token="";}
+
+        if (client.credentials.id_token!==undefined){
+          credentials.id_token = client.credentials.id_token;
+        } else { credentials.id_token="";}
+
+        if (client.credentials.refresh_token!==undefined){
+          credentials.refresh_token = client.credentials.refresh_token;
+        } else { credentials.refresh_token="";}
+
+        if (client.credentials.token_type!==undefined){
+          credentials.token_type = client.credentials.token_type;
+        } else { credentials.token_type="";}
 
         cache.set(0, credentials)
         console.log('credentials.creationDate = ' + credentials.creationDate);
@@ -118,11 +134,11 @@ async function getNewServerUsrIdFn(projectId){
 
 const getCredentials= async (req, res) => {
   try{
-    theValue = await getCredentialsFn(projectId);
-    return theValue;
+    theValue = await getCredentialsFn(req.params.projectId);
+    return res.send(theValue);
   }
   catch (err){
-    return({status:700,err:err})
+    return res.send({status:700,err:err});
   }
 }
 
