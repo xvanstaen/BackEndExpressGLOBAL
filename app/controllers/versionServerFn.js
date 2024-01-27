@@ -1,6 +1,6 @@
 
 function serverVersion(){
-    const myVersion="Version 26Jan2024 V1-2";
+    const myVersion="Version 27Jan2024 V1-0";
     return(myVersion)
   }
   
