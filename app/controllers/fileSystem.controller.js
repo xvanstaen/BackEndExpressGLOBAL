@@ -177,7 +177,7 @@ const onFileSystem = async (req, res) => {
          
     //console.log('theFileParse=',theFileParse);
     var tabInUse=[];
-    if (tabLock[req.params.iWait].action==='onDestroy'  ){
+    if (tabLock[0].action==='onDestroy'  ){
       cacheConsole.fillCacheConsole(req.params.server,req.params.projectId,'File System','===> onDestroy for user '+tabLock[req.params.iWait].userServerId,{tabLock:tabLock[req.params.iWait]});
         for (var iWait=0; iWait<tabLock.length; iWait++){
           
@@ -255,7 +255,7 @@ const onFileSystem = async (req, res) => {
         }
         cacheConsole.fillCacheConsole(req.params.server,req.params.projectId,'File System',"on Destroy is completed for userServerId "+tabLock[0].userServerId);
         console.log('on Destroy is completed for userServerId ' +  tabLock[0].userServerId)
-        return res.send({msg:"on Destroy is completed", status:700});
+        return res.send({msg:"on Destroy is completed", status:200});
       } // ============ end of onDestroy process
 
 
@@ -282,7 +282,7 @@ const onFileSystem = async (req, res) => {
                 tabFS = fileSystemCache.get(0);
               }
               //myFileSystem = await getFileSystem(req.query.bucket, req.params.projectId, tabLock[req.params.iWait].objectName)
-              for (var record=0; record<tabFS.length && tabFS[record].fileName!==tabLock[req.params.iWait].objectName; record++){}
+              for (record=0; record<tabFS.length && tabFS[record].fileName!==tabLock[req.params.iWait].objectName; record++){}
               if (record===tabFS.length){
                 const recordFS={fileName:"", content:""}
                 tabFS.  push(recordFS);
@@ -631,9 +631,7 @@ function checkData(fileSystem, iWait, tabLock, credentialDate, server){
                   console.log('record is unlocked by validateLock')
                   return({theFile:validate, record:i});
                 } else {return(validate)};
-              }
-            
-            
+              } 
         }
     } else if (tabLock[iWait].action==="unlock"){
         if (i===fileSystem.length ){

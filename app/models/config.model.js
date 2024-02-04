@@ -26,6 +26,11 @@
           bufferInput:{
               hh:Number,
               mn:Number
+          },
+          userTimeOut:{
+            hh:Number,
+            mn:Number,
+            ss:Number,
           }
         },
         filesToCache:[{bucket:String,object:String}],
