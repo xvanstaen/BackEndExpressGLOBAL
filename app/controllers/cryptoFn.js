@@ -75,7 +75,7 @@ const  decryptFn = async (req, res) => {
             cachePSW.set(0,JSON.parse(downloadFile))
             myCrypto=JSON.parse(downloadFile);
       }
-    if (key > -1 && key <myCrypto.tab.length){
+    if (key > 0 && key -1 <myCrypto.tab.length){
         var myKey=myCrypto.tab[key-1].theKey;
     } else {
       Encrypt='Key invalid';
@@ -110,7 +110,7 @@ const  decryptFn = async (req, res) => {
             myCrypto=JSON.parse(downloadFile);
       }
   
-    if (key > -1 && key <myCrypto.tab.length){
+    if (key > 0 && key -1 <myCrypto.tab.length){
       var myKey=myCrypto.tab[key-1].theKey;
     } else {
       Decrypt='Key invalid';
@@ -166,7 +166,7 @@ const  decryptFnAll = async (req, res) => {
           cacheAll.set(0,JSON.parse(downloadFile))
           myCrypto=JSON.parse(downloadFile);
     }
-  if (key > -1 && key <myCrypto.tab.length){
+  if (key > 0 && key - 1 <myCrypto.tab.length){
       var myKey=myCrypto.tab[key-1].theKey;
   } else {
     Encrypt='Key invalid';
@@ -201,7 +201,7 @@ async function getDecryptAll(Encrypt, key, method, i_theFour, projectId){
           myCrypto=JSON.parse(downloadFile);
     }
 
-  if (key > -1 && key <myCrypto.tab.length){
+  if (key > 0 && key-1 <myCrypto.tab.length){
     var myKey=myCrypto.tab[key-1].theKey;
   } else {
     Decrypt='Key invalid';

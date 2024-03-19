@@ -77,17 +77,7 @@ const onFileSystem = async (req, res) => {
   try {
     var tabLock=JSON.parse(req.params.tabLock);
     cacheConsole.fillCacheConsole(req.params.server,req.params.projectId,'File System',"=== start the process for user "+ +tabLock[req.params.iWait].userServerId, {tabLock:tabLock[req.params.iWait]}); 
-    /*
-    if ( credentialCache.has(0)){ // retrieve credentials values in memory
-        credentials=credentialCache.get(0);
-        cacheConsole.fillCacheConsole(req.params.server,req.params.projectId,'File System',"credentials retrieved from memory", {credentials:credentials});
-    } else { // if no credentials in memory then get them
-        const theValue = await authFn.getCredentialsFn(req.params.server);
-        credentials=theValue.credentials;
-        credentialCache.set(0, credentials);
-        cacheConsole.fillCacheConsole(req.params.server,req.params.projectId,'File System',"no credentials in memory, theValue.status="+ theValue.status, {credentials:theValue.credentials});
-    }
-    */
+
     const theValue = await authFn.getCredentialsFn(req.params.server);
     credentials=theValue.credentials;
     credentialCache.set(0, credentials);
