@@ -5,6 +5,7 @@ const authFn = require("./authFn");
 const securityCtrl = require("./securityCtrl.js");
 const fileFn = require("./fileFn.js");
 var theServer="";
+var enableCache=false;
 
 async function uploadCacheConsole(projectId, logConsole){
   var theTab=[];
@@ -73,7 +74,7 @@ function fillTheTab(inTab,outTab){
 }
 
 async function fillCacheConsole(server, projectId,module,theMsg, content){
-   
+  if (enableCache===true){
     var theTab=[];
     theServer=server;
     const myDate=stdFunctions.defineMyDate();
@@ -110,9 +111,20 @@ async function fillCacheConsole(server, projectId,module,theMsg, content){
       theTab[theTab.length-1].msg=theMsg;
       cacheConsole.set(0, theTab);
     }
-  
+  }
     
   }
+
+  const disableCacheConsole=async (req, res) => {
+    enableCache=false;
+    return res.send({status:0,msg:"Cache console disabled"});
+  }
+
+  const enableCacheConsole=async (req, res) => {
+    enableCache=true;
+    return res.send({status:0,msg:"Cache console enabled"});
+  }
+
 
   const getCacheConsole=async (req, res) => {
     try{
@@ -160,4 +172,6 @@ async function fillCacheConsole(server, projectId,module,theMsg, content){
     getCacheConsole,
     fillCacheConsole,
     resetCacheConsole,
+    enableCacheConsole,
+    disableCacheConsole,
   }

@@ -36,6 +36,8 @@ let routes = (app) => {
 
   router.get("/getCacheConsole/:userId/:userPSW/:projectId/:testProd", cacheConsole.getCacheConsole);
   router.get("/resetCacheConsole/:userId/:userPSW/:projectId/:testProd", cacheConsole.resetCacheConsole);
+  router.get("/disableCacheConsole/:userId/:userPSW/:projectId/:testProd", cacheConsole.disableCacheConsole);
+  router.get("/enableCacheConsole/:userId/:userPSW/:projectId/:testProd", cacheConsole.enableCacheConsole);
 
   router.get("/serverVersion/:projectId/:testProd", versionFn.getServerVersion);
 
