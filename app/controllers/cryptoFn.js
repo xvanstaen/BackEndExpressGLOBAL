@@ -10,11 +10,34 @@ var cacheAll = new nodecache;
 var bucketCrypto='xmv-cryptodata';
 //var bucketLogin='manage-login';
 
+const  fillCacheCrypto = async (req, res) => {
+  try {
+    if (req.params.cryptoCacheType==="PSW"){
+      if ( cachePSW.has(0)){
+        return res.send({status:210, msg:"Cache Crypto was already filled-in"});
+      } else {
+        cachePSW.set(0,JSON.parse(req.params.cryptoCacheFile));
+      }
+      
+    } else if (req.params.cryptoCacheType==="All"){
+      if ( cacheAll.has(0)){
+        return res.send({status:210, msg:"Cache Crypto was already filled-in"});
+      } else {
+        cacheAll.set(0,JSON.parse(req.params.cryptoCacheFile));
+      }
+    }
+    return res.send({status:200, msg:"Cache Crypto filled"});
+  }        
+  catch (err){
+    return res.status(700).send({msg:"Cache Crypto could not be filled"});
+  }
+}
+
 const  encryptFn = async (req, res) => {
   
   try {
     // decode PSW
-    const thePSW = await getDecryptAll(req.params.userPSW,1, 'AES', 1, req.params.projectId)
+    const thePSW = await getDecrypt(req.params.userPSW,req.params.inKey, req.params.inMethod, req.params.iFour, req.params.projectId)
 
     const securityLevel= await securityCtrl.getSecurityAccess(req.params.userId,thePSW);
     if (securityLevel.status!==200){
@@ -26,7 +49,7 @@ const  encryptFn = async (req, res) => {
     const cryptAuth = JSON.parse(req.params.inAuth);
     if (cryptAuth.userId !== undefined && cryptAuth.psw !== undefined && cryptAuth.crypto !== undefined){
         if (cryptAuth.crypto === true){  
-          const encrypt = await getEncrypt(req.params.inData, req.params.inKey, req.params.inMethod, 0, req.params.projectId) ;
+          const encrypt = await getEncrypt(req.params.inData, req.params.inKey, req.params.inMethod, 1, req.params.projectId) ;
           return res.send({response:encrypt});
         } 
         return res.status(702).send({error:"invalid encrypt request"});
@@ -51,7 +74,7 @@ const  decryptFn = async (req, res) => {
     const cryptAuth = JSON.parse(req.params.inAuth);
     if (cryptAuth.userId !== undefined && cryptAuth.psw !== undefined && cryptAuth.crypto !== undefined){
       if (cryptAuth.crypto === true){  
-          const decrypt = await getDecrypt(req.params.inData, req.params.inKey, req.params.inMethod, 0, req.params.projectId);
+          const decrypt = await getDecrypt(req.params.inData, req.params.inKey, req.params.inMethod, req.params.iFour, req.params.projectId);
           return res.send({response:decrypt});
 
       } 
@@ -64,6 +87,27 @@ const  decryptFn = async (req, res) => {
     }
 }
 
+  const  encryptPSW = async (req, res) => {
+    try {
+
+      const encrypt = await getEncrypt(req.params.inData, req.params.inKey, req.params.inMethod, req.params.iFour, req.params.projectId) ;
+      return res.send({response:encrypt});
+  
+    } 
+    catch (err){
+      return res.status(700).send({status:700, msg:'pb with  coding of encryptFn'+err});
+    }
+  }
+
+  const  decryptPSW = async (req, res) => {
+    try {
+      const decrypt = await getDecrypt(req.params.inData, req.params.inKey, req.params.inMethod, req.params.iFour, req.params.projectId);
+      return res.send({response:decrypt});
+    }
+    catch (err){
+      return res.status(700).send({sttaus:700,msg:'pb with coding of decryptFn'+err});
+    }
+  }
 
   async function getEncrypt(Decrypt, key, method, i_theFour, projectId){
       if ( cachePSW.has(0)){
@@ -138,7 +182,7 @@ const  encryptFnAll = async (req, res) => {
   
   try {
 
-    const encrypt = await getEncryptAll(req.params.inData, req.params.inKey, req.params.inMethod, 0, req.params.projectId) ;
+    const encrypt = await getEncryptAll(req.params.inData, req.params.inKey, req.params.inMethod, req.params.iFour, req.params.projectId) ;
     return res.send({response:encrypt});
 
   } 
@@ -149,11 +193,11 @@ const  encryptFnAll = async (req, res) => {
 
 const  decryptFnAll = async (req, res) => {
   try {
-    const decrypt = await getDecryptAll(req.params.inData, req.params.inKey, req.params.inMethod, 0, req.params.projectId);
+    const decrypt = await getDecryptAll(req.params.inData, req.params.inKey, req.params.inMethod, req.params.iFour, req.params.projectId);
     return res.send({response:decrypt});
   }
   catch (err){
-    return res.status(700).send({sttaus:700,msg:'pb with coding of decryptFn'+err});
+    return res.status(700).send({status:700,msg:'pb with coding of decryptFn'+err});
   }
 }
   async function getEncryptAll(Decrypt, key, method, i_theFour, projectId){
@@ -226,10 +270,13 @@ async function getDecryptAll(Encrypt, key, method, i_theFour, projectId){
   module.exports = {
   encryptFn,
   decryptFn,
+  encryptPSW,
+  decryptPSW,
   getDecrypt,
   getEncrypt,
   encryptFnAll,
   decryptFnAll,
   getDecryptAll,
-  getEncryptAll
+  getEncryptAll,
+  fillCacheCrypto
   }

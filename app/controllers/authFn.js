@@ -7,15 +7,18 @@ const {google} = require('googleapis');
 const http = require('http');
 const https = require('https');
 const url = require('url');
-
+//const destroyer = require('server-destroy');
 
 const nodecache = require('node-cache');
 var cache = new nodecache;
-
+var openAuthUrl=false;
 const fileController = require("./file.controller");
 const stdFunctions = require("./stdFunctions");
 
+var cachePort = new nodecache;
+
 var credentials = '';
+var newCredentials="";
 
 // Access scopes 
 const scopes = [
@@ -38,7 +41,7 @@ async function getClient(projectId){
   }
 
 const getDefaultCredentials = async (req, res) => {
-      const theValue =  await getDefaultCredentialsFn(req.params.projectId);
+      const theValue =  await getDefaultCredentialsFn(req.params.projectId,req.params.reset);
       if (theValue.status===200){
         res.status(200).send({credentials:theValue.credentials});
       } else {
@@ -46,13 +49,14 @@ const getDefaultCredentials = async (req, res) => {
       }
   }
   
-async function getDefaultCredentialsFn(projectId){
+async function getDefaultCredentialsFn(projectId,reset){
     try {
-      if ( cache.has(0)){
-          credentials=cache.get(0);
-          // credentials.userServerId++
-          cache.set(0, credentials)
+      if ( cache.has(1) && reset===false){
+        credentials=cache.get(1);
       } else {
+          if ( cache.has(1) ){
+              cache.del(1);
+          }
           const auth = new GoogleAuth({
             scope: scopes,
             projectId: projectId
@@ -67,7 +71,7 @@ async function getDefaultCredentialsFn(projectId){
           credentials= {access_token:client.credentials.access_token,id_token:client.credentials.id_token
             , refresh_token:client.credentials.refresh_token, token_type:client.credentials.token_type, userServerId:0, creationDate:myDate}
   
-          cache.set(0, credentials)
+          cache.set(1, credentials)
           console.log('credentials.creationDate = ' + credentials.creationDate);
       }
 
@@ -79,11 +83,14 @@ async function getDefaultCredentialsFn(projectId){
   }
 
 
-async function getCredentialsFn(projectId){
+async function getCredentialsFn(projectId,reset){
   try {
-    if ( cache.has(0)){
+    if ( cache.has(0) && reset===false){
         credentials=cache.get(0);
     } else {
+        if ( cache.has(0) ){
+            cache.del(0);
+        }
         const auth = new GoogleAuth({
           scope: scopes,
           projectId: projectId
@@ -121,7 +128,7 @@ async function getCredentialsFn(projectId){
 }
 
 async function getNewServerUsrIdFn(projectId){
-  theValue = await getCredentialsFn(projectId);
+  theValue = await getCredentialsFn(projectId,false);
   if (theValue.status===200){
     credentials=theValue.credentials;
     credentials.userServerId++
@@ -134,7 +141,7 @@ async function getNewServerUsrIdFn(projectId){
 
 const getCredentials= async (req, res) => {
   try{
-    theValue = await getCredentialsFn(req.params.projectId);
+    theValue = await getCredentialsFn(req.params.projectId,req.params.reset);
     return res.send(theValue);
   }
   catch (err){
@@ -166,67 +173,137 @@ const  checkAccessToken = async (req, res) => {
     return res.status(200).send(tokenInfo);
 }
 
-const requestTokenOAuth2 = async (req, res) => {
-    try{
+async function getAuthenticatedClient(redirectUri) {
+  const { default: open } = await import('open');
+  return new Promise((resolve, reject)  => {
+        
+        // Generate a url that asks permissions for the Drive activity scope
+        const OAUTH_CLIENT = '699868766266-iimi67j8gvpnogsq45jul0fbuelecp4i.apps.googleusercontent.com';
+        const OAUTH_SECRET = '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';
+        //const redirect="http://localhost:4200/oauth2callback";
+
+        const oAuth2Client = new OAuth2Client(
+          OAUTH_CLIENT, //keys.web.client_id,
+          OAUTH_SECRET, //keys.web.client_secret,
+          redirectUri //keys.web.redirect_uris[0]
+        );
+        var authorizeUrl = oAuth2Client.generateAuthUrl({
+          // 'online' (default) or 'offline' (gets refresh_token)
+          access_type: 'offline', 
+            /** Pass in the scopes array defined above.
+            * Alternatively, if only one scope is needed, you can pass a scope URL as a string */
+          scope: scopes,
+          response_type:'code',
+          // Enable incremental authorization. Recommended as a best practice.
+          include_granted_scopes: true
     
-      // Generate a url that asks permissions for the Drive activity scope
-      const authorizationUrl = oauth2Client.generateAuthUrl({
-        // 'online' (default) or 'offline' (gets refresh_token)
-        access_type: 'offline', 
-          /** Pass in the scopes array defined above.
-          * Alternatively, if only one scope is needed, you can pass a scope URL as a string */
-        scope: scopes,
-  
-  
-        //response_type:'code',
-        // Enable incremental authorization. Recommended as a best practice.
-        //include_granted_scopes: true,
-  
-      });
-  
-      const server = http.createServer(async function (req, res) {
-        try{
-        // Example on redirecting user to Google's OAuth 2.0 server.
-  
-          // res.writeHead(301, { "Location": authorizationUrl });
-  
-    
-        // Receive the callback from Google's OAuth 2.0 server.
-        // if (req.url.indexOf('/oauth2callback') > -1) {
-        if (req.url.startsWith('/oauth2callback')) {
-          // Handle the OAuth 2.0 server response
-          let q = url.parse(req.url, true).query;
-    
-          if (q.error) { // An error response e.g. error=access_denied
-            console.log('Error:' + q.error);
-          } else { // Get access and refresh tokens (if access_type is offline)
-            let { tokens } = await oauth2Client.getToken(q.code);
-            oauth2Client.setCredentials(tokens);
-            console.info('Tokens acquired.');
-            /** Save credential to the global variable in case access token was refreshed.
-              * ACTION ITEM: In a production app, you likely want to save the refresh token
-              *              in a secure persistent database instead. */
-            userCredential = tokens;
-            console.log('userCredential='+userCredential);
-            return res.status(200).send(userCredential);
-           
+        });
+/*
+        var Aserver = http.createServer((req, res) => {
+          res.writeHead(200, { 'Content-Type': 'application/json' });
+          let qs = url.parse(req.url, true).query;
+          console.log('Error bis:' + qs.err + "  URL=" + req.url,);
+          //const code = qs.get('code');
+          //console.log(`Code is ${code}`);
+          var listened = false;
+          if (Aserver.listening===true){
+            listened=true;
+          }
+          res.end(JSON.stringify({
+            data: "   ==> this is the reponse provided by 'requestListener'; value of url.parse(req.url, true).query = " 
+              + req.url + " listening port 4000 = " + listened
+          })
+          );
+          Aserver.close();
+        });
+        const theUrl="http://localhost:4000/";
+        Aserver.listen({port:4000}, async function(){open("http://localhost:4000/" , {wait: false}).then(cp => cp.unref());
+*/
+
+        // const server = http.createServer(async function (areq, ares) {})
+        var trouve=false;
+        for (var i=0; i<2; i++ ){
+          if (cachePort.has(i) && cachePort.get(i)==3000){
+            trouve=true;
           }
         }
-        res.end();
+      if (trouve===false){
+        const server = http
+        .createServer((req, res) => {
+          // Example on redirecting user to Google's OAuth 2.0 server.
+          try{
+              res.writeHead(301, { "Location": authorizeUrl });
+              console.log('requestListener');
+              // Receive the callback from Google's OAuth 2.0 server.
+              // if (req.url.indexOf('/oauth2callback') > -1) {
+              // if (req.url.startsWith('/oauth2callback')) {
+              // Handle the OAuth 2.0 server response
+              const qs = url.parse(req.url, true).query;
+              //const code = qs.get('code');
+              //console.log(`Code is ${code}`);
+              res.end('Authentication successful! Please return to the console.');
+              server.close();
+        /*
+              if (qs.error) { // An error response e.g. error=access_denied
+                console.log('Error redirect:' + qs.error);
+              } else { // Get access and refresh tokens (if access_type is offline)
+                var { r } = await oAuth2Client.getToken(qs.code);
+                oAuth2Client.setCredentials(r.tokens);
+                console.info('Tokens acquired.');
+                // Save credential to the global variable in case access token was refreshed.
+                //  * ACTION ITEM: In a production app, you likely want to save the refresh token
+                //  *              in a secure persistent database instead. 
+                
+         */       
+                console.log('userCredential='+tokens);
+                resolve(oAuth2Client);
+              }
+        // }
+          catch (err){
+              server.close();
+              reject (err);
+            }
+          })
+        .listen({port:3000}, async function(){
+          //  open(authorizeUrl)
+            
+            open(authorizeUrl , {wait: false}).then(cp => cp.unref());
+            console.log(server.address());
+            cachePort.set(0,3000);
+        });
       }
+    });
+}
+
+const requestTokenOAuth2 = async (req, res) => {
+      try{
+          const oAuth2Client = await getAuthenticatedClient(req.params.reDirect);
+          const url = 'https://people.googleapis.com/v1/people/me?personFields=names';
+          const res = await oAuth2Client.request({url});
+          const tokenInfo = await oAuth2Client.getTokenInfo(
+            oAuth2Client.credentials.access_token
+          );
+          console.log(tokenInfo);
+          console.log(res.data);
+          return res.send({status:200, message:"check if Auth2 works"});
+      } 
       catch (err){
-        return res.status(882).send({ message: "Pb with authentication", error:err });
+          return res.status(999).send({ message: "Pb with authentication", error:err });
       }
-      })
-    } catch (err){
-        return res.status(880).send({ message: "Pb with authentication", error:err });
-    }
-    
   }
   
 
   const refreshToken = async (req, res) => {
-    const authorizationUrl = oauth2Client.generateAuthUrl({
+    const OAUTH_CLIENT = '699868766266-iimi67j8gvpnogsq45jul0fbuelecp4i.apps.googleusercontent.com';
+      const OAUTH_SECRET = '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';
+      //const redirect="http://localhost:4200/oauth2callback";
+      const redirectUri=req.params.reDirect
+      const oAuth2Client = new OAuth2Client(
+        OAUTH_CLIENT, //keys.web.client_id,
+        OAUTH_SECRET, //keys.web.client_secret,
+        redirectUri //keys.web.redirect_uris[0]
+      );
+    const authorizeUrl = oAuth2Client.generateAuthUrl({
       // 'online' (default) or 'offline' (gets refresh_token)
       access_type: 'offline', 
         /** Pass in the scopes array defined above.
@@ -236,8 +313,8 @@ const requestTokenOAuth2 = async (req, res) => {
       //include_granted_scopes: true,
       prompt: 'consent'
     });
-    res.writeHead(301, { "Location": authorizationUrl });
-   
+    res.writeHead(301, { "Location": authorizeUrl });
+    //return res.status(200).send("OK");
   }
   
   const revokeToken = async (req, res) => {

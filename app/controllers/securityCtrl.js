@@ -9,8 +9,8 @@ var bucketLogin='manage-login';
 async function getSecurityAccess(projectId, userId, PSW){
     try {
       const myDecrypt = await getUserPswRecord(projectId, userId );
-      const thePSW = await cryptoFn.getDecryptAll(PSW, 1, 'AES', 0, projectId)
-      if (myDecrypt.data === "Key invalid" || myDecrypt.data !== thePSW){
+      //const thePSW = await cryptoFn.getDecrypt(PSW, myDecrypt.key, myDecrypt.method, myDecrypt.iFour, projectId)
+      if (myDecrypt.data === "Key invalid" || myDecrypt.data !== PSW){   //thePSW
         return ({msg:"invalid id/psw", status:580});
       } 
       return ({status:200,accessLevel:myDecrypt.securityLevel})
@@ -27,9 +27,15 @@ async function getSecurityAccess(projectId, userId, PSW){
     bucket.projectId=projectId;
   
     const [downloadFile] = await bucket.file(userId+'PSW.json').download();
+    const recordPSW=JSON.parse(downloadFile);
     try{
-      const decrypt = await cryptoFn.getDecrypt(JSON.parse(downloadFile).psw , JSON.parse(downloadFile).key, JSON.parse(downloadFile).method ,0, projectId)
-      return ({data:decrypt, bucketUserInfo:JSON.parse(downloadFile).bucketUserInfo, securityLevel:JSON.parse(downloadFile).security});
+      if (recordPSW.UserId===userId){
+        const decrypt = await cryptoFn.getDecrypt(recordPSW.psw , recordPSW.key, recordPSW.method ,recordPSW.iFour, projectId)
+        return ({data:decrypt, bucketUserInfo:recordPSW.bucketUserInfo, securityLevel:recordPSW.security, key:recordPSW.key,
+          method:recordPSW.method ,iFour:recordPSW.iFour
+        });
+      }
+      return ({data:"Key invalid", bucketUserInfo:"",securityLevel:""}) // userid does not match
     }
     catch (err){
       return ({data:"Key invalid", bucketUserInfo:"",securityLevel:""})

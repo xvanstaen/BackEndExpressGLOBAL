@@ -164,25 +164,52 @@ const getFileContent = async (req, res) => {
 
 const  checkLogin = async (req, res) => {
   try {
-    const thePSW = await cryptoFn.getDecryptAll(req.params.psw, 1, 'AES', 0, req.params.projectId)
     const myDecrypt = await securityCtrl.getUserPswRecord(req.params.projectId,req.params.userId );
     
-    if (myDecrypt.data === "Key invalid" || myDecrypt.data !== thePSW){
+    if (myDecrypt.data === "Key invalid" ){
       return res.status(520).send({msg:"invalid id/psw", status:520});
     } 
+    //const thePSW = await cryptoFn.getDecrypt(req.params.psw, myDecrypt.key, myDecrypt.method, myDecrypt.iFour, req.params.projectId);
+    if (myDecrypt.data !== req.params.psw){
+      return res.status(520).send({msg:"invalid id/psw", status:520});
+    }
     const storage = await authFn.getClient(req.params.projectId);
     var bucket = storage.bucket(myDecrypt.bucketUserInfo);
     bucket.projectId=req.params.projectId;
     const [downloadFile] = await bucket.file(req.params.userId+'.json').download();
-    return res.status(200).send(JSON.parse(downloadFile));
-    
+    var identifRecord=JSON.parse(downloadFile);
+    identifRecord.secLevel=myDecrypt.securityLevel;
+    return res.status(200).send(identifRecord);
   }
   catch (err) {
     console.log("CHECK LOGIN - could not get the file. " + err);
     return res.send({status:700,msg:'System failure ' + err})
   }
 }
-
+const uploadFromMemory =async (req, res) => {
+  if (req.query.bucket === bucketCrypto || req.query.bucket === bucketLogin){
+    const securityLevel= await securityCtrl.getSecurityAccess(req.params.projectId, req.params.userId,req.params.userPSW);
+    if (securityLevel.status!==200){
+      return res.send(securityLevel);
+    } 
+    if (securityLevel.accessLevel!=='Very High'){
+      return res.send({status:585,msg:"you don't have the right level of security access"});
+    }
+  }
+  const storage = await authFn.getClient(req.params.projectId);
+   
+  var bucket = storage.bucket(req.query.bucket);
+  bucket.projectId=req.params.projectId;
+  enableUniformBucketLevelAccess(req.query.bucket, storage);
+  try{
+    await processFile(req, res);
+    await storage.bucket(req.query.bucket).file(req.params.name).save(req.body.file);
+    return res.status(200).send({msg: "Uploaded the file successfully: " + req.params.name});
+  } 
+  catch (err){
+    return res.send({status:600,msg:'File could not be saved ' + err})
+  }
+}
 
 const upload =async (req, res) => {
     //console.log(' ===> upload');
@@ -572,6 +599,7 @@ const deleteObject = async (req, res) => {
 module.exports = {
   upload,
   uploadMetaPerso,
+  uploadFromMemory,
   getListFiles,
   getFileContent,
   getObjectMeta,

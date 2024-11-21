@@ -14,6 +14,7 @@ const securityCtrl =  require("../controllers/securityCtrl.js");
 
 let routes = (app) => {
   router.post("/upload/:userId/:userPSW/:projectId/:name/:testProd/:cacheControl/:contentType", fileCtrl.upload);
+  router.post("/uploadFromMemory/:userId/:userPSW/:projectId/:name/:testProd/:cacheControl/:contentType", fileCtrl.uploadFromMemory);
   router.post("/uploadMetaPerso/:projectId/:name/:testProd/:cacheControl/:contentType/:metaPerso", fileCtrl.uploadMetaPerso);
   router.post("/updateMeta/:projectId/:testProd/:name/:metaCache/:metaType/:metaPerso", fileCtrl.updateMeta);
   router.get("/listFiles/:projectId/:testProd", fileCtrl.getListFiles);
@@ -43,20 +44,23 @@ let routes = (app) => {
 
   router.get("/checkLogin/:projectId/:testProd/:userId/:psw/", fileCtrl.checkLogin);
 
-  router.get("/encryptFn/:userId/:userPSW/:projectId/:testProd/:inData/:inKey/:inMethod/:inAuth", cryptoFn.encryptFn);
-  router.get("/decryptFn/:userId/:userPSW/:projectId/:testProd/:inData/:inKey/:inMethod/:inAuth", cryptoFn.decryptFn);
+  router.get("/encryptFn/:userId/:userPSW/:projectId/:testProd/:inData/:inKey/:inMethod/:iFour/:inAuth", cryptoFn.encryptFn);
+  router.get("/decryptFn/:userId/:userPSW/:projectId/:testProd/:inData/:inKey/:inMethod/:iFour/:inAuth", cryptoFn.decryptFn);
 
-  router.get("/encryptAllFn/:projectId/:testProd/:inData/:inKey/:inMethod/:inAuth", cryptoFn.encryptFnAll);
-  router.get("/decryptAllFn/:projectId/:testProd/:inData/:inKey/:inMethod/:inAuth", cryptoFn.decryptFnAll);
+  router.get("/encryptAllFn/:projectId/:testProd/:inData/:inKey/:inMethod/:iFour/:inAuth", cryptoFn.encryptFnAll);
+  router.get("/decryptAllFn/:projectId/:testProd/:inData/:inKey/:inMethod/:iFour/:inAuth", cryptoFn.decryptFnAll);
+  router.get("/encryptPSW/:projectId/:testProd/:inData/:inKey/:inMethod/:iFour/:inAuth", cryptoFn.encryptPSW);
+  router.get("/decryptPSW/:projectId/:testProd/:inData/:inKey/:inMethod/:iFour/:inAuth", cryptoFn.decryptPSW);
 
- 
-  router.get("/requestTokenOAuth2/:projectId/:testProd", authFn.requestTokenOAuth2);
-  router.get("/refreshToken/:projectId/:testProd", authFn.refreshToken);
-  router.get("/revokeToken/:projectId/:testProd", authFn.revokeToken);
+  router.get("/fillCacheCrypto/:projectId/:testProd/:cryptoCacheType/:cryptoCacheFile", cryptoFn.fillCacheCrypto);
+
+  router.get("/requestTokenOAuth2/:projectId/:testProd/:reDirect", authFn.requestTokenOAuth2);
+  router.get("/refreshToken/:projectId/:testProd/:reDirect", authFn.refreshToken);
+  router.get("/revokeToken/:projectId/:testProd/:reDirect", authFn.revokeToken);
   router.get("/checkAccessToken/:projectId/:testProd/:accessToken", authFn.checkAccessToken);
   
-  router.get("/getCredentials/:projectId/:testProd", authFn.getCredentials);
-  router.get("/requestDefaultCredentials/:projectId/:testProd", authFn.getDefaultCredentials);
+  router.get("/getCredentials/:projectId/:testProd/:reset", authFn.getCredentials);
+  router.get("/requestDefaultCredentials/:projectId/:testProd/:reset", authFn.getDefaultCredentials);
   router.get("/getNewServerUsrId/:projectId/:testProd", authFn.getNewServerUsrId);
 
   router.get("/onFileSystem/:projectId/:testProd/:server/:name/:tabLock/:iWait", fileSystem.onFileSystem);
