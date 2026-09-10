@@ -188,10 +188,10 @@ const  checkAccessToken = async (req, res) => {
 async function getAuthenticatedClient(redirectUri) {
   const { default: open } = await import('open');
   return new Promise((resolve, reject)  => {
-        
-        // Generate a url that asks permissions for the Drive activity scope
-        const OAUTH_CLIENT = '699868766266-iimi67j8gvpnogsq45jul0fbuelecp4i.apps.googleusercontent.com';
-        const OAUTH_SECRET = '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';
+     // ******* TO BE REVIEWED WITH THE USAGE OF THE SECURITY_KEY
+     // *******
+        const OAUTH_CLIENT = '';
+        const OAUTH_SECRET = '';
         //const redirect="http://localhost:4200/oauth2callback";
 
         const oAuth2Client = new OAuth2Client(
@@ -306,10 +306,12 @@ const requestTokenOAuth2 = async (req, res) => {
   
 
   const refreshToken = async (req, res) => {
-    const OAUTH_CLIENT = '699868766266-iimi67j8gvpnogsq45jul0fbuelecp4i.apps.googleusercontent.com';
-      const OAUTH_SECRET = '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';
+    const OAUTH_CLIENT = '';
+      const OAUTH_SECRET = '';
       //const redirect="http://localhost:4200/oauth2callback";
       const redirectUri=req.params.reDirect
+
+      // ******** TO BE REVIEWED ********
       const oAuth2Client = new OAuth2Client(
         OAUTH_CLIENT, //keys.web.client_id,
         OAUTH_SECRET, //keys.web.client_secret,
