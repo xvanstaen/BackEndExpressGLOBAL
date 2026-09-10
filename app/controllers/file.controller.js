@@ -55,7 +55,8 @@ const getMedialinkContent = async (req, res) => {
         return res.send({status:585,msg:"you don't have the right level of security access"});
       }
     }
-    const storage = await authFn.getClient(req.params.projectId);
+    //const storage = await authFn.getClient(req.params.projectId);
+    const storage = new Storage();
     var bucket = storage.bucket(req.query.bucket);
     bucket.projectId=req.params.projectId;
     const [metaData] = await bucket.file(req.params.name).getMetadata();
@@ -126,15 +127,12 @@ const getFileContent = async (req, res) => {
         
         return res.status(200).send(cache.get(i));
     } 
-    const storage = await authFn.getClient(req.params.projectId);
+    //const storage = await authFn.getClient(req.params.projectId);
+    const storage = new Storage();
     var bucket = storage.bucket(req.query.bucket);
     bucket.projectId=req.params.projectId;
   
-    /**
-    const [metaData] = await bucket.file(req.params.name).getMetadata();
-    console.log("File found & link is " + metaData.mediaLink);
-    res.redirect(metaData.mediaLink);
-     */
+
     console.log('retrieve file '+ req.params.name);
     //cacheConsole.fillCacheConsole('getFileContent','retrieve file '+ req.params.name ,listFiles);
     const [downloadFile] = await bucket.file(req.params.name).download();        
@@ -196,8 +194,8 @@ const uploadFromMemory =async (req, res) => {
       return res.send({status:585,msg:"you don't have the right level of security access"});
     }
   }
-  const storage = await authFn.getClient(req.params.projectId);
-   
+  //const storage = await authFn.getClient(req.params.projectId);
+  const storage = new Storage();
   var bucket = storage.bucket(req.query.bucket);
   bucket.projectId=req.params.projectId;
   enableUniformBucketLevelAccess(req.query.bucket, storage);
@@ -224,8 +222,8 @@ const upload =async (req, res) => {
         }
       }
       
-    const storage = await authFn.getClient(req.params.projectId);
-   
+    //const storage = await authFn.getClient(req.params.projectId);
+    const storage = new Storage();
     var bucket = storage.bucket(req.query.bucket);
     bucket.projectId=req.params.projectId;
     enableUniformBucketLevelAccess(req.query.bucket, storage);
@@ -303,8 +301,8 @@ const upload =async (req, res) => {
 const uploadMetaPerso =async (req, res) => {
   try {
     //cacheConsole.fillCacheConsole('uploadMetaPerso','in uploadMetaPerso',"");
-    const storage = await authFn.getClient(req.params.projectId);
-   
+    //const storage = await authFn.getClient(req.params.projectId);
+    const storage = new Storage();
     var bucket = storage.bucket(req.query.bucket);
     bucket.projectId=req.params.projectId;
     enableUniformBucketLevelAccess(req.query.bucket, storage);
@@ -368,7 +366,8 @@ const updateMeta = async (req, res) => {
   const cacheCtrl='"cacheControl":"';
   const theType='"contentType":"';
   const theMeta='"metadata":{';
-  const storage = await authFn.getClient(req.params.projectId);
+  //const storage = await authFn.getClient(req.params.projectId);
+  const storage = new Storage();
 
   try {
       var bucket = storage.bucket(req.query.bucket);
@@ -414,8 +413,8 @@ const updateMeta = async (req, res) => {
 
 const getListFiles = async (req, res) => {
   try {
-    const storage = await authFn.getClient(req.params.projectId);
-   
+    //const storage = await authFn.getClient(req.params.projectId);
+    const storage = new Storage();
     var bucket = storage.bucket(req.query.bucket);
     bucket.projectId=req.params.projectId;
     const [files] = await bucket.getFiles();
@@ -434,8 +433,8 @@ const getListFiles = async (req, res) => {
 
 const getListMetaDataFiles = async (req, res) => {
   try {
-    const storage = await authFn.getClient(req.params.projectId);
-   
+    //const storage = await authFn.getClient(req.params.projectId);
+    const storage = new Storage();
     var bucket = storage.bucket(req.query.bucket);
     bucket.projectId=req.params.projectId;
     const [files] = await bucket.getFiles();
@@ -455,7 +454,8 @@ const getListMetaDataFiles = async (req, res) => {
 
 const getObjectMeta = async (req, res) => {
   try {
-    const storage = await authFn.getClient(req.params.projectId);
+    //const storage = await authFn.getClient(req.params.projectId);
+    const storage = new Storage();
     var bucket = storage.bucket(req.query.bucket);
     bucket.projectId=req.params.projectId;
     const [metaData] = await bucket.file(req.params.name).getMetadata();
@@ -476,7 +476,8 @@ const listBuckets = async (req, res) => {
     if (securityLevel.accessLevel!=='High' && securityLevel.accessLevel!=='Very High'){
       return res.send({status:585,msg:"you don't have the right level of security access"});
     }
-    const storage = await authFn.getClient(req.params.projectId);
+    //const storage = await authFn.getClient(req.params.projectId);
+    const storage = new Storage();
     storage.projectId=req.params.projectId;
     const [buckets] = await storage.getBuckets();
     let BuckInfos = [];
@@ -500,7 +501,8 @@ const copyObject = async (req, res) => {
     if (securityLevel.accessLevel!=='High' && securityLevel.accessLevel!=='Very High'){
       return res.send({status:585,msg:"you don't have the right level of security access"});
     }
-    const storage = await authFn.getClient(req.params.projectId);
+    //const storage = await authFn.getClient(req.params.projectId);
+    const storage = new Storage();
     var bucket = storage.bucket(req.query.bucket);
     bucket.projectId=req.params.projectId;
     await bucket.file(req.params.SRCname).copy(storage.bucket(req.params.DESTbucket).file(req.params.DESTname));
@@ -528,7 +530,8 @@ const moveObject = async (req, res) => {
     var DestBucket=req.params.DESTbucket;
     var DestObject=req.params.DESTname;
     var SRCObject=req.params.SRCname;
-    const storage = await authFn.getClient(req.params.projectId);
+    //const storage = await authFn.getClient(req.params.projectId);
+    const storage = new Storage();
     const  bucket = storage.bucket(req.query.bucket);
     bucket.projectId=req.params.projectId;
     await bucket.file(req.params.SRCname).move(storage.bucket(req.params.DESTbucket).file(req.params.DESTname));
@@ -553,7 +556,8 @@ const renameObject = async (req, res) => {
     if (securityLevel.accessLevel!=='High' && securityLevel.accessLevel!=='Very High'){
       return res.send({status:585,msg:"you don't have the right level of security access"});
     }
-    const storage = await authFn.getClient(req.params.projectId);
+    //const storage = await authFn.getClient(req.params.projectId);
+    const storage = new Storage();
     var bucket = storage.bucket(req.query.bucket);
     bucket.projectId=req.params.projectId;
     await bucket.file(req.params.SRCname).rename(req.params.DESTname);
@@ -580,7 +584,8 @@ const deleteObject = async (req, res) => {
     if (securityLevel.accessLevel!=='High' && securityLevel.accessLevel!=='Very High'){
       return res.send({status:585,msg:"you don't have the right level of security access"});
     }
-    const storage = await authFn.getClient(req.params.projectId);
+    //const storage = await authFn.getClient(req.params.projectId);
+    const storage = new Storage();
     var bucket = storage.bucket(req.query.bucket);
     bucket.projectId=req.params.projectId;
     await bucket.file(req.params.name).delete();

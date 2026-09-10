@@ -143,7 +143,7 @@ const onFileSystem = async (req, res) => {
           const code = await saveFS(req.params.projectId, req.query.bucket,tabLock[req.params.iWait].objectName,JSON.stringify(myFileSystem),tabLock[req.params.iWait]);
           theMsg='server was reset and same user re-accesses the file; new FS record is';
       } else {
-          theMsg='server was reset and same user re-accesses the file which indeed is empty';
+          theMsg='File System is empty so will be locked for the requesting user';
       }
       cacheConsole.fillCacheConsole(req.params.server,req.params.projectId,'File System',theMsg,{fileSystem:myFileSystem});
       console.log(theMsg);
@@ -530,7 +530,8 @@ async function saveFS(projectId, bucket,object,fileContent,tablockItem){
   bucketFileSystem.projectId=projectId;
   bucketFileSystem.id=bucket;
   bucketFileSystem.name=bucket;
-  await bucketFileSystem.file(object).save(fileContent);
+
+  await bucketFileSystem.file(object).save(fileContent); 
   try{
     const storage = await authFn.getClient(projectId);
     var bucketMetaFS = storage.bucket(bucket);

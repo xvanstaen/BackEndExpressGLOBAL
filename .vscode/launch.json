@@ -5,11 +5,11 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "ng serve",
-            "type": "firefox",
+            "type": "node-terminal",
             "request": "launch",
-            "preLaunchTask": "npm: start",
-            "url": "http://localhost:8080"
+            "name": "npm: start",
+            "command": "node server.js",
+            
           },
     ]
 }

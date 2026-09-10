@@ -4,6 +4,12 @@ const cors = require("cors");
 const express = require("express");
 const app = express();
 var os = require('os');
+const { SecretManagerServiceClient } = require('@google-cloud/secret-manager');
+
+// Initialize the Secret Manager client
+const client = new SecretManagerServiceClient();
+const nodecache = require('node-cache');
+var cacheKey = new nodecache;
 
 app.use(cors());
 app.use(express.json());
@@ -22,6 +28,10 @@ initRoutes(app);
 
 const mongoConfig = require("./app/controllers/config.controller.js");
 const versionFn = require("./app/controllers/versionServerFn.js");
+
+const theKey = accessSecurityKey();
+
+console.log('security key = ', theKey);
 
 mongoConfig.getConfigServer()
 .then( async (res) => {
@@ -70,6 +80,19 @@ function displayStatus(code, nbRecords){
   });
 }
 
-
+async function accessSecurityKey() {
+  const theName="projects/699868766266/secrets/XMVSecretKey/versions/latest"
+  try {
+  const [version] = await client.accessSecretVersion( {name:theName} );
+  // Extract the payload string
+  const secretPayload = version.payload.data.toString('utf8');
+  const securityKey = JSON.parse(secretPayload);
+  
+  return (securityKey);
+  } catch (error) {
+    console.error('Failed to access secret:', error);
+    throw error;
+  }
+}
 
 

@@ -3,6 +3,9 @@ const { MAX_RETRY_DEFAULT } = require("@google-cloud/storage/build/src/storage")
 const {GoogleAuth} = require('google-auth-library');
 const {OAuth2Client} = require('google-auth-library');
 const { Storage } = require("@google-cloud/storage");
+
+
+const crypto = require('crypto');
 const {google} = require('googleapis');
 const http = require('http');
 const https = require('https');
@@ -16,7 +19,7 @@ const fileController = require("./file.controller");
 const stdFunctions = require("./stdFunctions");
 
 var cachePort = new nodecache;
-
+var cacheKey = new nodecache;
 var credentials = '';
 var newCredentials="";
 
@@ -26,17 +29,26 @@ const scopes = [
 ];
 
 
-async function getClient(projectId){
-    const auth = new GoogleAuth({
+
+async function getClient(projectId){    
+  // Initialize the Secret Manager client
+   
+    return( new Storage())
+    // return( new Storage({ keyFilename: "/Users/xaviervanstaen/JsonServer/GoogleStorage/clientsecret.json" }) );
+    const auth = new google.auth. GoogleAuth({
       scope: scopes,
+      include_granted_scopes: true,
+      access_type: 'offline',
       projectId: projectId
     });
+    
     const client = await auth.getClient();
-  
+
     const storageOptions = {
       projectId: projectId,
       authClient: client,
     };
+
     return (new Storage(storageOptions));
   }
 
@@ -310,7 +322,7 @@ const requestTokenOAuth2 = async (req, res) => {
         * Alternatively, if only one scope is needed, you can pass a scope URL as a string */
       scope: scopes,
       // Enable incremental authorization. Recommended as a best practice.
-      //include_granted_scopes: true,
+      include_granted_scopes: true,
       prompt: 'consent'
     });
     res.writeHead(301, { "Location": authorizeUrl });
@@ -335,7 +347,7 @@ const requestTokenOAuth2 = async (req, res) => {
     refreshToken,// to be tested
     revokeToken,// to be tested
     getNewServerUsrId,
-    getNewServerUsrIdFn
+    getNewServerUsrIdFn,
     
  
   }
