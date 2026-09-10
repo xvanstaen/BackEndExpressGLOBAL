@@ -4,3 +4,5 @@
 steps:
 - name: 'gcr.io/cloud-builders/docker'
   args: ['build', '-t', 'us-central1-docker.pkg.dev/xmv-it-consulting/my-docker-repo/my-image', '.']
+options:
+  logging: CLOUD_LOGGING_ONLY
