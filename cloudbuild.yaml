@@ -1,0 +1,3 @@
+steps:
+  - name: "gcr.io/://google.com"
+    args: ["gcloud", "app", "deploy", "app.yaml"]
