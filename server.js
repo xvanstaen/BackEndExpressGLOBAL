@@ -8,8 +8,6 @@ const { SecretManagerServiceClient } = require('@google-cloud/secret-manager');
 
 // Initialize the Secret Manager client
 const client = new SecretManagerServiceClient();
-const nodecache = require('node-cache');
-var cacheKey = new nodecache;
 
 app.use(cors());
 app.use(express.json());
@@ -72,7 +70,7 @@ function displayStatus(code, nbRecords){
     configData=" ISSUE - configData NOT retrieved in MongoDB; error code="+code;
   }
   app.get("/", (req, res) => {
-    res.json({ message: "GoogleCloud & MongoDB - " + myVersion.version + " - server.js [express node.js]." + configData});
+    res.json({ message: "  ==> GoogleCloud & MongoDB - " + myVersion.version + " - server.js [express node.js]." + configData});
   });
   const port = process.env.PORT || 8080;
   app.listen(port, () => {
