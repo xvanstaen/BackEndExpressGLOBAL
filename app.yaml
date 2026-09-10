@@ -1,5 +1,5 @@
 
 
 # [START app_yaml]
-runtime: nodejs18
+runtime: nodejs24
 # [END app_yaml]
