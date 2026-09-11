@@ -62,7 +62,7 @@ mongoConfig.getConfigServer()
 
 
 function displayStatus(code, nbRecords){
-  const myVersion=versionFn.serverVersion();
+  const myVersion="2026-09-11";
   var configData = "";
   if (code===200){
     configData=" configData (" + nbRecords + "found) retrieved in MongoDB";
@@ -70,7 +70,7 @@ function displayStatus(code, nbRecords){
     configData=" ISSUE - configData NOT retrieved in MongoDB; error code="+code;
   }
   app.get("/", (req, res) => {
-    res.json({ message: "  ==> GoogleCloud & MongoDB - " + myVersion.version + " - server.js [express node.js]." + configData});
+    res.json({ message: "  ==> GoogleCloud & MongoDB + secret key - " + myVersion + " - server.js [express node.js]." + configData});
   });
   const port = process.env.PORT || 8080;
   app.listen(port, () => {
