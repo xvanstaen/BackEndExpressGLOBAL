@@ -1,0 +1,21 @@
+# Step 1: Use an official Node.js runtime as the base image
+# Alpine is recommended for a smaller, secure footprint
+FROM node:20-alpine
+
+# Step 2: Set the working directory inside the container
+WORKDIR /usr/src/app
+
+# Step 3: Copy package files first to take advantage of Docker caching
+COPY package*.json ./
+
+# Step 4: Install production dependencies only
+RUN npm ci --only=production
+
+# Step 5: Copy the rest of your application code (including server.js)
+COPY . .
+
+# Step 6: Expose the port your server.js listens on (Google Cloud Run typically uses 8080)
+EXPOSE 8080
+
+# Step 7: Define the command to run your app
+CMD [ "node", "server.js" ]
