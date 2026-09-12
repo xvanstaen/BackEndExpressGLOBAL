@@ -1,4 +1,4 @@
- steps:
+steps:
 # Build the image
 - name: 'gcr.io/cloud-builders/docker'
   args: ['build', '-t', 'us-central1-docker.pkg.dev/test-server-359505/cloud-run-source-deploy/xmv-server', '.']

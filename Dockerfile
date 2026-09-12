@@ -1,7 +1,8 @@
 
 # Step 1: Use an official Node.js runtime as the base image
 # Alpine is recommended for a smaller, secure footprint
-FROM node:20-alpine
+##FROM node:20-alpine
+FROM node:24.15.0
 
 # Step 2: Set the working directory inside the container
 WORKDIR /usr/src/app
@@ -10,7 +11,7 @@ WORKDIR /usr/src/app
 COPY package*.json ./
 
 # Step 4: Install production dependencies only -
-RUN npm install -g npm@12.0.2 --only=production
+RUN npm install -g npm@12.0.2 --omit=dev
 # RUN npm ci --only=production 
 
 # Step 5: Copy the rest of your application code (including server.js)
