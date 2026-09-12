@@ -1,6 +1,10 @@
 steps:
-  - name: 'gcr.io/cloud-builders/gcloud'
-    args: ['version']
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['build', '-t', 'gcr.io/test-server-359505/my-image:latest', '.']
+
+#steps:
+#  - name: 'gcr.io/cloud-builders/gcloud'
+#    args: ['version']
 
 # Add this section at the end
 options:
