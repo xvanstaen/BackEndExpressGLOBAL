@@ -1,5 +1,13 @@
-
-steps:
-docker build \
-    -t gcr.io/test-server-359505/github.com/xvanstaen/backendexpressglobal:$COMMIT_SHA \
-    -f Dockerfile .
+ steps:
+# Build the image
+- name: 'gcr.io/cloud-builders/docker'
+  args: ['build', '-t', 'global-docker.pkg.dev/test-server-359505/cloud-run-source-deploy/xmv-server', '.']
+# Push the image to Artifact Registry
+- name: 'gcr.io/cloud-builders/docker'
+  args: ['push', 'global-docker.pkg.dev//cloud-run-source-deploy/xmv-server']
+# Deploy image to Cloud Run
+- name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+  entrypoint: gcloud
+  args: ['run', 'deploy', 'test-server', '--image', 'global-docker.pkg.dev/test-server-359505/cloud-run-source-deploy/xmv-server', '--region', 'us-central1']
+images:
+- 'global-docker.pkg.dev/test-server/cloud-run-source-deploy/xmv-server'
