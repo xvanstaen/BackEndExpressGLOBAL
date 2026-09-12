@@ -2,4 +2,4 @@
 steps:
 docker build \
     -t gcr.io/test-server-359505/github.com/xvanstaen/backendexpressglobal:$COMMIT_SHA \
-    -f Dockerfile \ .
+    -f Dockerfile \ 
