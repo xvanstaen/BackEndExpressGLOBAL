@@ -104,12 +104,8 @@ const onFileSystem = async (req, res) => {
           if (credentials.userServerId===undefined || tabLock[req.params.iWait].credentialDate !== credentials.creationDate || (myFileSystem.length>0 && i<myFileSystem.length && myFileSystem[i].server!==req.params.server)){
             // retrieve the File System -> objectName refers to the functionality that is locked 
             cacheConsole.fillCacheConsole(req.params.server,req.params.projectId,'File System',"credentials or server are/is different, tabLock[req.params.iWait].credentialDate="+tabLock[req.params.iWait].credentialDate,{credentials:credentials});
-          
+            myFileSystem = await getFileSystem(req.query.bucket, req.params.projectId, tabLock[req.params.iWait].objectName);
             if (myFileSystem.length>0){
-                //for (var i=0; i< myFileSystem.length && 
-                //  ( myFileSystem[i].object!==tabLock[req.params.iWait].object ||  myFileSystem[i].bucket!==tabLock[req.params.iWait].bucket || myFileSystem[i].server!==req.params.server); i++){}
-                
-                  // if i< myFileSystem.length then the record has been found and it is related to another user
                 
                 if (i< myFileSystem.length && (myFileSystem[i].credentialDate !== tabLock[req.params.iWait].credentialDate ||
                             myFileSystem[i].server!==req.params.server)) { // was before=> credentials.creationDate

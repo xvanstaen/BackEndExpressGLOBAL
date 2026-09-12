@@ -79,7 +79,7 @@ function displayStatus(code, nbRecords){
 }
 
 async function accessSecurityKey() {
-  const theName="projects/699868766266/secrets/XMVSecretKey/versions/latest"
+  const theName="projects/699868766266/secrets/XMVSecretKey/versions/1"
   try {
   const [version] = await client.accessSecretVersion( {name:theName} );
   // Extract the payload string
@@ -88,7 +88,7 @@ async function accessSecurityKey() {
   
   return (securityKey);
   } catch (error) {
-    console.error('Failed to access secret:', error);
+    console.error('**** Failed to access secret:', error);
     throw error;
   }
 }
