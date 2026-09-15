@@ -132,7 +132,7 @@ const getFileContent = async (req, res) => {
     var bucket = storage.bucket(req.query.bucket);
     bucket.projectId=req.params.projectId;
   
-
+   
     console.log('retrieve file '+ req.params.name);
     //cacheConsole.fillCacheConsole('getFileContent','retrieve file '+ req.params.name ,listFiles);
     const [downloadFile] = await bucket.file(req.params.name).download();        
