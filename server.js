@@ -75,7 +75,7 @@ function displayStatus(code, nbRecords){
     res.json({ message: "  ==> GoogleCloud & MongoDB + secret key - " + myVersion + " - server.js [express node.js]." + configData});
   });
   const port = process.env.PORT || 8080;
-  app.listen(port, () => {
+  app.listen(port, '0.0.0.0',  () => {
     console.log(`==> Running ${myVersion} at localhost:${port} on server ${os.hostname()} and IP address=${os.networkInterfaces().address}, homeDir=${os.homedir()} `);
   });
 }
