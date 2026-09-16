@@ -31,7 +31,7 @@ const versionFn = require("./app/controllers/versionServerFn.js");
 
 const theKey = accessSecurityKey();
 
-console.log('security key = ', theKey);
+//console.log('security key = ', theKey);
 
 mongoConfig.getConfigServer()
 .then( async (res) => {
@@ -83,14 +83,14 @@ function displayStatus(code, nbRecords){
 async function accessSecurityKey() {
   const theName="projects/699868766266/secrets/XMVSecretKey/versions/1"
   try {
-  const [version] = await client.accessSecretVersion( {name:theName} );
-  // Extract the payload string
-  const secretPayload = version.payload.data.toString('utf8');
-  const securityKey = JSON.parse(secretPayload);
-  
-  return (securityKey);
+    const [version] = await client.accessSecretVersion( {name:theName} );
+    // Extract the payload string
+    const secretPayload = version.payload.data.toString('utf8');
+    const securityKey = JSON.parse(secretPayload);
+    console.log('security key = ', securityKey);
+    return (securityKey);
   } catch (error) {
-    console.error('**** Failed to access secret:', error);
+    console.error('**** Failed to access Google secret key:', error);
     throw error;
   }
 }

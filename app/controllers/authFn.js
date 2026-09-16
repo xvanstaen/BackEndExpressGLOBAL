@@ -35,6 +35,7 @@ async function getClient(projectId){
    
     return( new Storage())
     // return( new Storage({ keyFilename: "/Users/xaviervanstaen/JsonServer/GoogleStorage/clientsecret.json" }) );
+    /*
     const auth = new google.auth. GoogleAuth({
       scope: scopes,
       include_granted_scopes: true,
@@ -50,6 +51,7 @@ async function getClient(projectId){
     };
 
     return (new Storage(storageOptions));
+    */
   }
 
 const getDefaultCredentials = async (req, res) => {

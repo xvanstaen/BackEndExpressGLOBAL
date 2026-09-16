@@ -2,16 +2,18 @@
 
 steps:
 ## Build the image
-#- name: 'gcr.io/cloud-builders/docker'
-#  args: ['build', '-t', 'us-central1-docker.pkg.dev/test-server-359505/cloud-run-source-deploy/xmv-server-image:latest', '.']
+- name: 'gcr.io/cloud-builders/docker'
+  args: ['build', '-t', 'us-central1-docker.pkg.dev/test-server-359505/cloud-run-source-deploy/xmv-server-image:latest', '.']
 ## Push the image to Artifact Registry
-#- name: 'gcr.io/cloud-builders/docker'
-#  args: ['push', 'us-central1-docker.pkg.dev/test-server-359505/cloud-run-source-deploy/xmv-server-image:latest']
+- name: 'gcr.io/cloud-builders/docker'
+  args: ['push', 'us-central1-docker.pkg.dev/test-server-359505/cloud-run-source-deploy/xmv-server-image:latest']
 ## Deploy image to Cloud Run
 - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
   entrypoint: gcloud
   args: ['run', 'deploy', 'test-server', '--image', 'us-central1-docker.pkg.dev/test-server-359505/cloud-run-source-deploy/xmv-server-image:latest', '--region', 'us-central1']
 images:
 - 'us-central1-docker.pkg.dev/test-server/cloud-run-source-deploy/xmv-server-image:latest'
+options:
+  logging: CLOUD_LOGGING_ONLY
 
 ##### gcloud builds submit --region=us-central1
