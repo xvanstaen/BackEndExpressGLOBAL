@@ -12,7 +12,7 @@ steps:
   id: 'deploy-to-cloud-run' 
   entrypoint: gcloud
   args: ['run', 'deploy', 'test-server', '--image', 'us-central1-docker.pkg.dev/test-server-359505/cloud-run-source-deploy/xmv-server-image:latest', '--region', 'us-central1'
-    , '--platform', 'managed', '--allow-unauthenticated']
+    , '--platform', 'managed', '--port=8080', '--allow-unauthenticated']
 images:
 - 'us-central1-docker.pkg.dev/test-server-359505/cloud-run-source-deploy/xmv-server-image:latest'
 options:
