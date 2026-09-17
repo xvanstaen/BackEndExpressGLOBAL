@@ -1,0 +1,51 @@
+<!-- 
+YOUR COMMENTS is you want to describe what your script does
+The available functions are
+-->
+
+<!-- To list all the domains which are in your configuration file just trigger the following function -->
+
+<#listDomain #>
+
+<!-- you MUST specify the domain for all functions except of <#listDomain - all fields are Mandatory -->
+<#domain field="Location" value="your_value" #>
+
+<!-- items to select, tag must always be "<ABDConfig " 
+     This function is optional
+     toValue is optional, the other fields are mandatory
+--> 
+<#select tag="<ABDConfig " field="ComputerName" fromValue="PERT1" toValue="" #>
+
+<!-- only display the following elements (if #select is defined then the filter will only apply to the selected items) 
+  first element to mention MUST always be at least [tag="<ABDConfig "]
+  element'field' is optional. Items within 'field' must be separated by a comma
+  element 'subTag' is only used from the second [tag=""] and is optional  
+  [ & ] are mandatory separators
+-->
+<#filter 
+    [tag="<ABDConfig " field="ComputerName, IPAddress, PassportReaderModel"] 
+    [tag="<BiometricCamera" field="Disable, QualityThreshold, IlluminatorLevel"] 
+    [tag="</ABDConfig> " field=""] 
+#> 
+
+<!-- change the value of selected items; it only applies to the domain specified above 
+Several elements can be defined in the change field
+all elements are mandatory
+'old' value must be found to be changed
+[ & ] are mandatory separators
+format of changeField {tag:' ', old:' ', new:' '} 
+the current ('old') value will be changed with 'new' value on the specified 'tag'
+!-->
+<#replace 
+    [tag="<ABDConfig " refField="ComputerName" withValue="PERT1" 
+    changeField="
+    {tag:'IPAddress',old:'a1', new:'b1'}, 
+    {tag:'IPAddress',old:'a2', new:'b2'}
+    {tag:'PassportReaderModel',old:'DESKO', new:'IER'}", 
+    ]
+    [tag="<BiometricCamera" refField="QualityThreshold" withValue="60" 
+    changeField="
+    {tag:'Disable',old:'true', new:'false'}, 
+    {tag:'QualityThreshold',old:'60', new:'80'}", 
+    ]
+#>
