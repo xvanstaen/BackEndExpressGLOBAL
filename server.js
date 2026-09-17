@@ -64,7 +64,7 @@ mongoConfig.getConfigServer()
 
 
 function displayStatus(code, nbRecords){
-  const myVersion="2026-09-11";
+  const myVersion="2026-09-17";
   var configData = "";
   if (code===200){
     configData=" configData (" + nbRecords + "found) retrieved in MongoDB";
