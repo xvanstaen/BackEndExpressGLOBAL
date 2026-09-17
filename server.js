@@ -8,6 +8,8 @@ const { SecretManagerServiceClient } = require('@google-cloud/secret-manager');
 
 // Initialize the Secret Manager client
 const client = new SecretManagerServiceClient();
+
+//***** Comments to be removed when used in test Localhost:8080 *****/
 //const path = require('path');
 //process.env.GOOGLE_APPLICATION_CREDENTIALS = path.join(__dirname, 'JsonServer', 'clientsecret.json');
 
