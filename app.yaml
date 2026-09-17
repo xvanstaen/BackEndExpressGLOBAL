@@ -2,4 +2,5 @@
 
 # [START app_yaml]
 runtime: nodejs24
+entrypoint: node server.js
 # [END app_yaml]
