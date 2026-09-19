@@ -8,8 +8,7 @@ const { SecretManagerServiceClient } = require('@google-cloud/secret-manager');
 
 // Initialize the Secret Manager client
 const client = new SecretManagerServiceClient();
-
-//***** Comments to be removed when used in test Localhost:8080 *****/
+//  Comments to be removed when used in test Localhost:8080 *****/
 //const path = require('path');
 //process.env.GOOGLE_APPLICATION_CREDENTIALS = path.join(__dirname, 'JsonServer', 'clientsecret.json');
 
@@ -66,7 +65,7 @@ mongoConfig.getConfigServer()
 
 
 function displayStatus(code, nbRecords){
-  const myVersion="2026-09-17";
+  const myVersion="2026-09-19";
   var configData = "";
   if (code===200){
     configData=" configData (" + nbRecords + "found) retrieved in MongoDB";

@@ -393,9 +393,10 @@ const resetFS= async (req, res) => {
                 code = await saveFS(req.params.projectId, req.query.bucket,tabLock[req.params.iWait].objectName,JSON.stringify(myFileSystem),tabLock[req.params.iWait]);
     
               }
+            }if (code===200 || code===201){
+              tabFS[record].content.splice(0,1);
+              fileSystemCache.set(0,tabFS);
             }
-            tabFS.splice(record,1);
-            fileSystemCache.set(0,tabFS);
             if (code===200){
               return res.status(200).send({status:200,msg:'file system ' + req.params.name + ' has been reset for ' + tabLock[req.params.iWait].object + ' , file saved with metadata'});
             } else if (code===201){
@@ -450,7 +451,7 @@ const resetFS= async (req, res) => {
 function inUseFileSystem(tablockItem, server){
 
   const recordFS={
-    action:"", objectName:"", createdAt:"", updatedAt:"", access:0, userServerId:0, dateTime:"",server:"",
+    action:"", objectName:"", createdAt:"", updatedAt:"", access:0, userServerId:0, userName:"", dateTime:"",server:"",
     timeoutFileSystem:{hh:0, mn:0}
   }
 
@@ -462,6 +463,7 @@ function inUseFileSystem(tablockItem, server){
     lockFileSystem[lockFileSystem.length-1].createdAt = tablockItem.createdAt;
     lockFileSystem[lockFileSystem.length-1].updatedAt = tablockItem.updatedAt;
     lockFileSystem[lockFileSystem.length-1].userServerId = tablockItem.userServerId;
+    lockFileSystem[lockFileSystem.length-1].userName = tablockItem.user;
     lockFileSystem[lockFileSystem.length-1].timeoutFileSystem.hh = tablockItem.timeoutFileSystem.hh;
     lockFileSystem[lockFileSystem.length-1].timeoutFileSystem.mn = tablockItem.timeoutFileSystem.mn;
     lockFileSystem[lockFileSystem.length-1].server=server;
