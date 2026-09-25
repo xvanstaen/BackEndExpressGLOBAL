@@ -30,7 +30,7 @@ let routes = (app) => {
   router.get("/move/:userId/:userPSW/:projectId/:testProd/:DESTbucket/:SRCname/:DESTname", fileCtrl.moveObject);
   router.get("/copy/:userId/:userPSW/:projectId/:testProd/:DESTbucket/:SRCname/:DESTname", fileCtrl.copyObject);
 
-  router.get("/resetCacheFile/:userId/:userPSW/:projectId/:testProd/:fileName", cacheFn.resetCacheFile);
+  router.get("/`reset`CacheFile/:userId/:userPSW/:projectId/:testProd/:fileName", cacheFn.resetCacheFile);
   router.get("/getCacheFile/:userId/:userPSW/:projectId/:testProd", cacheFn.getCacheFile);
   router.get("/reloadCacheFile/:userId/:userPSW/:projectId/:testProd", cacheFn.reloadCacheFile);
   router.get("/insertCacheFile/:userId/:userPSW/:projectId/:testProd/:name", cacheFn.insertCacheFile);

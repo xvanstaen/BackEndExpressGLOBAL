@@ -99,7 +99,7 @@ async function getDefaultCredentialsFn(projectId,reset){
 
 async function getCredentialsFn(projectId,reset){
   try {
-    if ( cache.has(0) && reset===false){
+      if ( cache.has(0) && reset===false){
         credentials=cache.get(0);
     } else {
         if ( cache.has(0) ){
