@@ -168,7 +168,7 @@ const  checkLogin = async (req, res) => {
       return res.status(520).send({msg:"invalid id/psw", status:520});
     } 
     //const thePSW = await cryptoFn.getDecrypt(req.params.psw, myDecrypt.key, myDecrypt.method, myDecrypt.iFour, req.params.projectId);
-    if (myDecrypt.data !== req.params.psw){
+    if (myDecrypt.data !== req.query.userPSW){
       return res.status(520).send({msg:"invalid id/psw", status:520});
     }
     const storage = await authFn.getClient(req.params.projectId);
@@ -468,7 +468,7 @@ const getObjectMeta = async (req, res) => {
 
 const listBuckets = async (req, res) => {
   try {
-    const securityLevel= await securityCtrl.getSecurityAccess(req.params.projectId, req.params.userId,req.params.userPSW);
+    const securityLevel= await securityCtrl.getSecurityAccess(req.params.projectId, req.params.userId,req.query.userPSW);
     if (securityLevel.status!==200){
       return res.send(securityLevel);
     } 
@@ -493,7 +493,7 @@ const listBuckets = async (req, res) => {
 
 const copyObject = async (req, res) => {
   try {
-    const securityLevel= await securityCtrl.getSecurityAccess(req.params.projectId, req.params.userId,req.params.userPSW);
+    const securityLevel= await securityCtrl.getSecurityAccess(req.params.projectId, req.params.userId,req.query.userPSW);
     if (securityLevel.status!==200){
       return res.send(securityLevel);
     } 
@@ -519,7 +519,7 @@ const copyObject = async (req, res) => {
 
 const moveObject = async (req, res) => {
   try {
-    const securityLevel= await securityCtrl.getSecurityAccess(req.params.projectId, req.params.userId,req.params.userPSW);
+    const securityLevel= await securityCtrl.getSecurityAccess(req.params.projectId, req.params.userId,req.query.userPSW);
     if (securityLevel.status!==200){
       return res.send(securityLevel);
     } 
@@ -548,7 +548,7 @@ const moveObject = async (req, res) => {
 
 const renameObject = async (req, res) => {
   try {
-    const securityLevel= await securityCtrl.getSecurityAccess(req.params.projectId, req.params.userId,req.params.userPSW);
+    const securityLevel= await securityCtrl.getSecurityAccess(req.params.projectId, req.params.userId,req.query.userPSW);
     if (securityLevel.status!==200){
       return res.send(securityLevel);
     } 
@@ -576,7 +576,7 @@ const renameObject = async (req, res) => {
 
 const deleteObject = async (req, res) => {
   try { 
-    const securityLevel= await securityCtrl.getSecurityAccess(req.params.projectId, req.params.userId,req.params.userPSW);
+    const securityLevel= await securityCtrl.getSecurityAccess(req.params.projectId, req.params.userId,req.query.userPSW);
     if (securityLevel.status!==200){
       return res.send(securityLevel);
     } 

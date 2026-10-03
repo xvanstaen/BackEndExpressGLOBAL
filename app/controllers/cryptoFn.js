@@ -37,7 +37,7 @@ const  encryptFn = async (req, res) => {
   
   try {
     // decode PSW
-    const thePSW = await getDecrypt(req.params.userPSW,req.params.inKey, req.params.inMethod, req.params.iFour, req.params.projectId)
+    const thePSW = await getDecrypt(req.query.userPSW,req.params.inKey, req.params.inMethod, req.params.iFour, req.params.projectId)
 
     const securityLevel= await securityCtrl.getSecurityAccess(req.params.userId,thePSW);
     if (securityLevel.status!==200){
@@ -49,7 +49,7 @@ const  encryptFn = async (req, res) => {
     const cryptAuth = JSON.parse(req.params.inAuth);
     if (cryptAuth.userId !== undefined && cryptAuth.psw !== undefined && cryptAuth.crypto !== undefined){
         if (cryptAuth.crypto === true){  
-          const encrypt = await getEncrypt(req.params.inData, req.params.inKey, req.params.inMethod, 1, req.params.projectId) ;
+          const encrypt = await getEncrypt(req.query.inData, req.params.inKey, req.params.inMethod, 1, req.params.projectId) ;
           return res.send({response:encrypt});
         } 
         return res.status(702).send({error:"invalid encrypt request"});
@@ -64,7 +64,7 @@ const  encryptFn = async (req, res) => {
 const  decryptFn = async (req, res) => {
   try {
     
-    const securityLevel= await securityCtrl.getSecurityAccess(req.params.userId,req.params.userPSW);
+    const securityLevel= await securityCtrl.getSecurityAccess(req.params.userId,req.query.userPSW);
     if (securityLevel.status!==200){
       return res.send(securityLevel);
     } 
@@ -74,7 +74,7 @@ const  decryptFn = async (req, res) => {
     const cryptAuth = JSON.parse(req.params.inAuth);
     if (cryptAuth.userId !== undefined && cryptAuth.psw !== undefined && cryptAuth.crypto !== undefined){
       if (cryptAuth.crypto === true){  
-          const decrypt = await getDecrypt(req.params.inData, req.params.inKey, req.params.inMethod, req.params.iFour, req.params.projectId);
+          const decrypt = await getDecrypt(req.query.inData, req.params.inKey, req.params.inMethod, req.params.iFour, req.params.projectId);
           return res.send({response:decrypt});
 
       } 
@@ -90,7 +90,7 @@ const  decryptFn = async (req, res) => {
   const  encryptPSW = async (req, res) => {
     try {
 
-      const encrypt = await getEncrypt(req.params.inData, req.params.inKey, req.params.inMethod, req.params.iFour, req.params.projectId) ;
+      const encrypt = await getEncrypt(req.query.inData, req.params.inKey, req.params.inMethod, req.params.iFour, req.params.projectId) ;
       return res.send({response:encrypt});
   
     } 
@@ -101,7 +101,7 @@ const  decryptFn = async (req, res) => {
 
   const  decryptPSW = async (req, res) => {
     try {
-      const decrypt = await getDecrypt(req.params.inData, req.params.inKey, req.params.inMethod, req.params.iFour, req.params.projectId);
+      const decrypt = await getDecrypt(req.query.inData, req.params.inKey, req.params.inMethod, req.params.iFour, req.params.projectId);
       return res.send({response:decrypt});
     }
     catch (err){
@@ -182,7 +182,7 @@ const  encryptFnAll = async (req, res) => {
   
   try {
 
-    const encrypt = await getEncryptAll(req.params.inData, req.params.inKey, req.params.inMethod, req.params.iFour, req.params.projectId) ;
+    const encrypt = await getEncryptAll(req.query.inData, req.params.inKey, req.params.inMethod, req.params.iFour, req.params.projectId) ;
     return res.send({response:encrypt});
 
   } 
@@ -193,7 +193,7 @@ const  encryptFnAll = async (req, res) => {
 
 const  decryptFnAll = async (req, res) => {
   try {
-    const decrypt = await getDecryptAll(req.params.inData, req.params.inKey, req.params.inMethod, req.params.iFour, req.params.projectId);
+    const decrypt = await getDecryptAll(req.query.inData, req.params.inKey, req.params.inMethod, req.params.iFour, req.params.projectId);
     return res.send({response:decrypt});
   }
   catch (err){

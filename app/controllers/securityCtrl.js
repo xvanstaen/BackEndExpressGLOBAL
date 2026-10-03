@@ -46,7 +46,7 @@ async function getSecurityAccess(projectId, userId, PSW){
   const getSecurityLevel= async (req, res) => {
 
     try{
-      const mySecLevel = await getSecurityAccess(req.params.projectId, req.params.userId, req.params.userPSW);
+      const mySecLevel = await getSecurityAccess(req.params.projectId, req.params.userId, req.query.userPSW);
       return res.send(mySecLevel);
     }
     catch (err){

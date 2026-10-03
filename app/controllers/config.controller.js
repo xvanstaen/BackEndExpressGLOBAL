@@ -116,7 +116,7 @@ const getFilesToCache = async function (testProd) {
 
 const resetCacheConfig = async (req, res) => {
   try{
-    const securityLevel = await securityCtrl.getSecurityAccess('xmv-it-consulting', req.params.userId,req.params.userPSW);
+    const securityLevel = await securityCtrl.getSecurityAccess('xmv-it-consulting', req.params.userId,req.query.userPSW);
     if (securityLevel.status!==200){
       return res.send(securityLevel);
     } 
@@ -208,7 +208,7 @@ const findConfigBytring = async (req, res) => {
 // Update configServer by the id in the request
 const updateConfig = async (req, res) => {
   try{
-    const securityLevel= await securityCtrl.getSecurityAccess('xmv-it-consulting', req.params.userId,req.params.userPSW);
+    const securityLevel= await securityCtrl.getSecurityAccess('xmv-it-consulting', req.params.userId,req.query.userPSW);
     if (securityLevel.status!==200){
       return res.send(securityLevel);
     } 
@@ -245,7 +245,7 @@ const updateConfig = async (req, res) => {
 // Save config
 const uploadConfig = async (req, res) => {
 try{
-  const securityLevel= await securityCtrl.getSecurityAccess('xmv-it-consulting', req.params.userId,req.params.userPSW);
+  const securityLevel= await securityCtrl.getSecurityAccess('xmv-it-consulting', req.params.userId,req.query.userPSW);
   if (securityLevel.status!==200){
     return res.send(securityLevel);
   } 
@@ -305,7 +305,7 @@ const getAllConfig  =  async (req, res) => {
 // Delete a record with the specified id in the request
 const delConfigById = async (req, res) => {
   try{
-    const securityLevel= await securityCtrl.getSecurityAccess('xmv-it-consulting', req.params.userId,req.params.userPSW);
+    const securityLevel= await securityCtrl.getSecurityAccess('xmv-it-consulting', req.params.userId,req.query.userPSW);
     if (securityLevel.status!==200){
       return res.send(securityLevel);
     } 

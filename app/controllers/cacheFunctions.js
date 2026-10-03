@@ -51,7 +51,7 @@ async function cacheFiles(testProd,fileName,bucketName){
   const getCacheFile = async (req, res) => {
     try{
       
-      const securityLevel= await securityCtrl.getSecurityAccess(req.params.projectId, req.params.userId,req.params.userPSW);
+      const securityLevel= await securityCtrl.getSecurityAccess(req.params.projectId, req.params.userId,req.query.userPSW);
       if (securityLevel.status!==200){
         return res.send(securityLevel);
       } 
@@ -69,7 +69,7 @@ async function cacheFiles(testProd,fileName,bucketName){
   
   const insertCacheFile = async (req, res) => {
     try{
-      const securityLevel= await securityCtrl.getSecurityAccess(req.params.projectId, req.params.userId,req.params.userPSW);
+      const securityLevel= await securityCtrl.getSecurityAccess(req.params.projectId, req.params.userId,req.query.userPSW);
       if (securityLevel.status!==200){
         return res.send(securityLevel);
       } 
@@ -96,7 +96,7 @@ async function cacheFiles(testProd,fileName,bucketName){
   
   const reloadCacheFile = async (req, res) => { // reaccess mongo DB
     try{
-        const securityLevel= await securityCtrl.getSecurityAccess(req.params.projectId, req.params.userId,req.params.userPSW);
+        const securityLevel= await securityCtrl.getSecurityAccess(req.params.projectId, req.params.userId,req.query.userPSW);
         if (securityLevel.status!==200){
           return res.send(securityLevel);
         } 
@@ -117,7 +117,7 @@ async function cacheFiles(testProd,fileName,bucketName){
   
   const resetCacheFile = async (req, res) => {
     try{
-      const securityLevel= await securityCtrl.getSecurityAccess(req.params.projectId, req.params.userId,req.params.userPSW);
+      const securityLevel= await securityCtrl.getSecurityAccess(req.params.projectId, req.params.userId,req.query.userPSW);
       if (securityLevel.status!==200){
         return res.send(securityLevel);
       } 
