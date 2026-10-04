@@ -128,7 +128,7 @@ async function fillCacheConsole(server, projectId,module,theMsg, content){
 
   const getCacheConsole=async (req, res) => {
     try{
-      const securityLevel= await securityCtrl.getSecurityAccess('xmv-it-consulting', req.params.userId,req.params.userPSW);
+      const securityLevel= await securityCtrl.getSecurityAccess('xmv-it-consulting', req.params.userId,req.query.userPSW);
       if (securityLevel.status!==200){
         return res.send(securityLevel);
       } 
@@ -151,7 +151,7 @@ async function fillCacheConsole(server, projectId,module,theMsg, content){
   
   const resetCacheConsole=async (req, res) => {
     try{
-      const securityLevel= await securityCtrl.getSecurityAccess('xmv-it-consulting', req.params.userId,req.params.userPSW);
+      const securityLevel= await securityCtrl.getSecurityAccess('xmv-it-consulting', req.params.userId,req.query.userPSW);
       if (securityLevel.status!==200){
         return res.send(securityLevel);
       } 
