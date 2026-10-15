@@ -16,14 +16,14 @@ const  fillCacheCrypto = async (req, res) => {
       if ( cachePSW.has(0)){
         return res.send({status:210, msg:"Cache Crypto was already filled-in"});
       } else {
-        cachePSW.set(0,JSON.parse(req.params.cryptoCacheFile));
+        cachePSW.set(0,JSON.parse(req.query.cryptoCacheFile));
       }
       
     } else if (req.params.cryptoCacheType==="All"){
       if ( cacheAll.has(0)){
         return res.send({status:210, msg:"Cache Crypto was already filled-in"});
       } else {
-        cacheAll.set(0,JSON.parse(req.params.cryptoCacheFile));
+        cacheAll.set(0,JSON.parse(req.query.cryptoCacheFile));
       }
     }
     return res.send({status:200, msg:"Cache Crypto filled"});

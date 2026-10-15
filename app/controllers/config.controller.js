@@ -121,7 +121,7 @@ const resetCacheConfig = async (req, res) => {
       return res.send(securityLevel);
     } 
 
-    if (securityLevel.accessLevel!=='High' || securityLevel.accessLevel!=='Very High'){
+    if (securityLevel.accessLevel!=='High' && securityLevel.accessLevel!=='Very High'){
       return res.send({status:585,msg:"you don't have the permission to use this functionality"});
     }
     var i=0;
@@ -175,7 +175,7 @@ const findConfig = async  (req, res) => {
 
 }
 
-const findConfigBytring = async (req, res) => {
+const findConfigByString = async (req, res) => {
   //console.log('findCollection/configServer');
     try{
       var searchString = req.query.searchString;
@@ -338,7 +338,7 @@ module.exports = {
   uploadConfig,
   updateConfig,
   getFilesToCache,
-  findConfigBytring,
+  findConfigByString,
   findConfig,
   resetCacheConfig,
   getConfigServer,

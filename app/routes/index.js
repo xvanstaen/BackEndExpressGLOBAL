@@ -52,7 +52,7 @@ let routes = (app) => {
   router.get("/encryptPSW/:projectId/:testProd/:inKey/:inMethod/:iFour/:inAuth", cryptoFn.encryptPSW);
   router.get("/decryptPSW/:projectId/:testProd/:inKey/:inMethod/:iFour/:inAuth", cryptoFn.decryptPSW);
 
-  router.get("/fillCacheCrypto/:projectId/:testProd/:cryptoCacheType/:cryptoCacheFile", cryptoFn.fillCacheCrypto);
+  router.get("/fillCacheCrypto/:projectId/:testProd/:cryptoCacheType", cryptoFn.fillCacheCrypto);
 
   router.get("/requestTokenOAuth2/:projectId/:testProd", authFn.requestTokenOAuth2);
   router.get("/refreshToken/:projectId/:testProd", authFn.refreshToken);
@@ -77,11 +77,11 @@ let routes = (app) => {
 
   router.get("/findConfig/:db/:testProd/:collection", config.findConfig);
   router.get("/findConfigByString/:db/:testProd/:collection/:searchField", config.findConfig); // contains the searchString query
-  router.get("/resetConfig/:userId/:userPSW/:db/:testProd/:collection", config.resetCacheConfig);
+  router.get("/resetConfig/:userId/:db/:testProd/:collection", config.resetCacheConfig);
   router.get("/findAllConfig/:db/:testProd/:collection", config.getAllConfig);
-  router.put("/updateConfig/:userId/:userPSW/:db/:testProd/:collection/:id", config.updateConfig);
-  router.put("/uploadConfig/:userId/:userPSW/:db/:testProd/:collection", config.uploadConfig);
-  router.get("/delConfigById/:userId/:userPSW/:db/:testProd/:collection/:id", config.delConfigById);
+  router.put("/updateConfig/:userId/:db/:testProd/:collection/:id", config.updateConfig);
+  router.put("/uploadConfig/:userId/:db/:testProd/:collection", config.uploadConfig);
+  router.get("/delConfigById/:userId/:db/:testProd/:collection/:id", config.delConfigById);
 
 
 /*============ TUTORIALS =============*/
